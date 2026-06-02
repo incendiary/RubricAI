@@ -1,0 +1,14 @@
+{{ workflow }}
+
+---
+
+## MCP Client Configuration
+
+RubricAI exposes four MCP tools: `intel_lookup`, `score_evaluate`, `report_generate`, `policy_get`.
+
+Configure your MCP client to connect to the server:
+
+- **stdio**: run `python -m src.main` with `RUBRICAI_TRANSPORT=stdio`
+- **SSE/HTTP**: run with `RUBRICAI_TRANSPORT=sse`, server listens on port 8000
+
+The workflow above is suitable for any MCP-compatible AI client. Adapt the framing to your platform's system prompt conventions.

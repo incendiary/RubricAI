@@ -1,0 +1,12 @@
+services:
+  rubricai:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - RUBRICAI_TRANSPORT=sse
+      - RUBRICAI_REPORT_DIR=/reports
+      - NVD_API_KEY=${NVD_API_KEY:-}
+    volumes:
+      - ./reports:/reports
+      - ./.cache:/app/.cache
