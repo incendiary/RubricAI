@@ -100,7 +100,7 @@ class TestLaneMedium:
             _make_intel(),
         )
         assert result.lane == "medium"
-        assert result.target.days == 30
+        assert result.target.days is None  # default: patch train
 
     def test_internal_reachability(self):
         result = evaluate(
@@ -143,7 +143,7 @@ class TestLaneLow:
             _make_intel(),
         )
         assert result.lane == "low"
-        assert result.target.days == 120
+        assert result.target.days is None  # default: patch train
 
     def test_internal_low_utility(self):
         result = evaluate(

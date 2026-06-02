@@ -4,9 +4,9 @@ from ..policy.definitions import (
     EPSS_HIGH_THRESHOLD,
     HIGH_UTILITY_TYPES,
     LANE_BASES,
-    LANE_TARGETS,
     POLICY_VERSION,
     STRONG_MITIGATION_TYPES,
+    get_lane_targets,
 )
 
 
@@ -19,11 +19,16 @@ def policy_get(policy_version: str | None = None) -> dict:
     Returns:
         Policy definition as a serialisable dict.
     """
+    targets = get_lane_targets()
     return {
         "policy_version": POLICY_VERSION,
         "lanes": {
-            lane: {"target_days": days, "basis": LANE_BASES[lane]}
-            for lane, days in LANE_TARGETS.items()
+            lane: {
+                "target_days": targets[lane],
+                "patch_train": targets[lane] is None,
+                "basis": LANE_BASES[lane],
+            }
+            for lane in targets
         },
         "thresholds": {
             "epss_high": EPSS_HIGH_THRESHOLD,
