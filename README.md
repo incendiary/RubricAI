@@ -4,6 +4,22 @@ A vulnerability prioritisation MCP server. Engineers answer structured questions
 
 ---
 
+## Background
+
+Vulnerability triage at scale is broken. Teams receive hundreds of CVE notifications per month; CVSS scores are context-free (a CVSS 9.8 in an air-gapped dev tool is not the same risk as a CVSS 7.0 in an internet-facing API); and remediation SLAs vary by team, tool, and mood. The result is inconsistent prioritisation, audit friction, and genuine risk buried under noise.
+
+RubricAI addresses this with two components:
+
+**1. A deterministic scoring engine (this repo)**
+A Python MCP server that fetches live public intel signals — CISA's Known Exploited Vulnerabilities (KEV) catalog, FIRST EPSS exploitation probability scores, NVD CVSS data, and PoC availability heuristics — and runs them through a fixed rule set called CHML (Critical / High / Medium / Low). The rules are code, not prompts: given the same inputs, the same lane is always assigned. This makes decisions auditable, reproducible, and easy to review centrally.
+
+**2. A structured interview workflow**
+A platform-agnostic Markdown document (`prompts/workflow.md`) that defines a 9-section interview an AI client conducts with engineers. The interview collects the contextual signals that public databases cannot: Is this component internet-exposed? Are there compensating controls? What data is at risk? The workflow is rendered into platform-specific system prompts via a Jinja2 template renderer for Claude, generic MCP clients, and Gemini.
+
+Together they replace ad-hoc severity gut-feel with a consistent, evidence-backed assessment that both engineers and security teams can reason about.
+
+---
+
 ## How it works
 
 ```
@@ -11,16 +27,21 @@ Engineer interview  →  intel_lookup  →  score_evaluate  →  report_generate
 (structured Q&A)      (KEV/EPSS/NVD)   (CHML policy)      (report card to disk)
 ```
 
+The AI client runs the interview (collecting finding context), then calls the MCP tools in sequence. Scoring happens server-side in pure Python — the AI is the interface, not the judge.
+
 **CHML lanes:**
 
 | Lane | Trigger | Target |
 |------|---------|--------|
-| Critical | KEV listed + internet-exposed + high utility | 72 hours |
-| High | Internet-exposed + EPSS ≥ 0.5 or PoC + high utility | 7 days |
-| Medium | Constrained/internal reachability or lower impact | 30 days |
-| Low | Low utility + low reachability or strong mitigations | Patch train (120–240 days) |
+| Critical | KEV listed + internet-exposed + high utility (RCE/auth bypass/priv-esc/data access) | 72 hours |
+| High | Internet-exposed + EPSS ≥ 0.5 or PoC available + high utility | 7 days |
+| Medium | Constrained/internal reachability, lower impact, or partial mitigations | 30 days |
+| Low | Local-only + low utility, or strong causal mitigations blocking the exploit path | Patch train (120–240 days) |
 
-Scoring is deterministic — rules live in server code, not AI prompts.
+**Guardrails:**
+- External intel (KEV, high EPSS, PoC) can escalate urgency but cannot downgrade a finding.
+- Mitigations must be exploit-relevant to shift a lane — "EDR deployed" does not mitigate an IDOR.
+- Medium → Low requires a mitigation with a `causal_claim` of type `waf_rule`, `acl_segmentation`, `disable_feature`, `vendor_workaround`, or `virtual_patching`.
 
 ---
 
@@ -42,19 +63,26 @@ cp .env.example .env
 ### Requirements
 - Python 3.11+
 - [pre-commit](https://pre-commit.com/)
-- [gitleaks](https://github.com/gitleaks/gitleaks) (via pre-commit)
 
 ---
 
-## Usage
+## Running
 
-### Local (stdio — Claude Desktop)
+### Local — Claude Desktop (stdio transport)
+
+Generate a system prompt and start the server:
 
 ```bash
+# Generate the Claude-specific system prompt
+python scripts/render_prompt.py --target claude
+# → prompts/out/claude_system_prompt.md
+
+# Start the MCP server
 python -m src.main
 ```
 
-Add to `claude_desktop_config.json`:
+Add to `claude_desktop_config.json` (usually `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+
 ```json
 {
   "mcpServers": {
@@ -62,29 +90,61 @@ Add to `claude_desktop_config.json`:
       "command": "python",
       "args": ["-m", "src.main"],
       "cwd": "/path/to/RubricAI",
-      "env": { "RUBRICAI_TRANSPORT": "stdio" }
+      "env": {
+        "RUBRICAI_TRANSPORT": "stdio",
+        "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports"
+      }
     }
   }
 }
 ```
 
-### Docker (SSE — team deployment)
+Open a new Claude Desktop conversation, paste the contents of `prompts/out/claude_system_prompt.md` as the system prompt, and tell Claude you have a CVE to assess.
+
+### Team deployment — Docker (SSE transport)
 
 ```bash
+cp .env.example .env
+# Edit .env: set NVD_API_KEY if you have one
+
 docker compose up --build
 ```
 
-Point your MCP client at `http://localhost:8000/sse`.
+Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host.
 
-### Generate platform-specific system prompts
+### Other MCP clients (generic / Gemini)
 
 ```bash
-python scripts/render_prompt.py --target claude    # → prompts/out/claude_system_prompt.md
 python scripts/render_prompt.py --target generic   # → prompts/out/generic_system_prompt.md
 python scripts/render_prompt.py --target gemini    # → prompts/out/gemini_system_prompt.md
 ```
 
-Paste the output into your AI client's system prompt field.
+Paste the output into your client's system prompt field.
+
+---
+
+## Tool call flow
+
+An AI client conducts a session like this:
+
+```
+1. Interview engineer — collect finding fields:
+     component, version, entry_point, reachability, attacker_utility,
+     mitigations, data_impact, environment
+
+2. Call intel_lookup(cves=["CVE-XXXX-YYYY"])
+   → returns KEV status, EPSS score, CVSS, PoC availability
+
+3. Call score_evaluate(finding=..., intel=...)
+   → returns lane (critical/high/medium/low), target days,
+     rationale, evidence gaps, score breakdown
+
+4. Call report_generate(finding=..., intel=..., assessment=...)
+   → persists markdown + JSON report cards to RUBRICAI_REPORT_DIR
+   → returns rendered markdown for display
+```
+
+Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUBRICAI_REPORT_DIR` (default `./reports/`).
 
 ---
 
@@ -118,23 +178,23 @@ pre-commit run --all-files
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RUBRICAI_TRANSPORT` | `stdio` | `stdio` or `sse` |
+| `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
 | `RUBRICAI_REPORT_DIR` | `./reports` | Directory for persisted report cards |
-| `NVD_API_KEY` | *(empty)* | Optional — increases NVD rate limit |
+| `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
 
 ---
 
 ## Roadmap
 
-| # | Status | Description |
-|---|--------|-------------|
-| [#1](../../issues/1) | ✅ Done | Secret scan — gitleaks + TruffleHog + detect-secrets (pre-commit + CI) |
-| [#2](../../issues/2) | ✅ Done | Dependency audit — Dependabot (pip + Actions, weekly) |
-| [#3](../../issues/3) | ✅ Done | Core implementation — schemas, CHML policy, fetchers, MCP tools |
-| [#4](../../issues/4) | ✅ Done | Tooling — Black, Ruff, isort, pre-commit, CI pipeline |
-| [#5](../../issues/5) | ⬜ Todo | Tests — expand integration coverage, add fetcher mocks |
-| [#6](../../issues/6) | ✅ Done | Documentation — README, system prompt templates |
-| [#7](../../issues/7) | ✅ Done | Branch protection — force-push blocked, required CI checks on main |
+| Issue | Status | Description |
+|-------|--------|-------------|
+| [#6](https://github.com/incendiary/RubricAI/issues/6) | ✅ Done | Secret scan — gitleaks + TruffleHog + detect-secrets (pre-commit + CI) |
+| [#7](https://github.com/incendiary/RubricAI/issues/7) | ✅ Done | Dependency audit — Dependabot (pip + Actions, weekly) |
+| [#8](https://github.com/incendiary/RubricAI/issues/8) | ✅ Done | Core implementation — schemas, CHML policy, fetchers, MCP tools |
+| [#9](https://github.com/incendiary/RubricAI/issues/9) | ✅ Done | Tooling — Black, Ruff, isort, pre-commit, CI pipeline |
+| [#10](https://github.com/incendiary/RubricAI/issues/10) | ⬜ Open | Tests — expand integration coverage, add fetcher mocks |
+| [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
+| [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 
 ---
 
