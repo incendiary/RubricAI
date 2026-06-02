@@ -71,7 +71,10 @@ def test_env_write_appends_session_log(tmp_path, monkeypatch):
     env_write(
         {
             "session_log": [
-                {"timestamp": "2024-01-01T00:00:00Z", "summary": "Assessed CVE-2024-1234"}
+                {
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "summary": "Assessed CVE-2024-1234",
+                }
             ]
         }
     )
@@ -157,7 +160,9 @@ def test_report_with_evidence_sets_has_verified_flag(tmp_path, monkeypatch):
             "verified": True,
         }
     ]
-    result = report_generate(_finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence)
+    result = report_generate(
+        _finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence
+    )
     assert result["has_verified_evidence"] is True
     assert result["report_json"]["has_verified_evidence"] is True
     assert len(result["report_json"]["evidence"]) == 1
@@ -172,7 +177,9 @@ def test_report_unverified_evidence_flag_false(tmp_path, monkeypatch):
             "verified": False,
         }
     ]
-    result = report_generate(_finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence)
+    result = report_generate(
+        _finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence
+    )
     assert result["has_verified_evidence"] is False
 
 
@@ -193,7 +200,9 @@ def test_report_evidence_in_markdown(tmp_path, monkeypatch):
             "verified": True,
         }
     ]
-    result = report_generate(_finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence)
+    result = report_generate(
+        _finding_dict(), _intel_dict(), _assessment_dict(), evidence=evidence
+    )
     assert "Evidence" in result["report_markdown"]
     assert "Firewall blocks port 8080" in result["report_markdown"]
     assert "✅ Verified" in result["report_markdown"]
