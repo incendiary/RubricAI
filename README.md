@@ -53,7 +53,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.3.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.4.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python -m venv .venv
@@ -372,7 +372,7 @@ pre-commit run --all-files
 | [#7](https://github.com/incendiary/RubricAI/issues/7) | ✅ Done | Dependency audit — Dependabot (pip + Actions, weekly) |
 | [#8](https://github.com/incendiary/RubricAI/issues/8) | ✅ Done | Core implementation — schemas, CHML policy, fetchers, MCP tools |
 | [#9](https://github.com/incendiary/RubricAI/issues/9) | ✅ Done | Tooling — Black, Ruff, isort, pre-commit, CI pipeline |
-| [#10](https://github.com/incendiary/RubricAI/issues/10) | ⬜ Open | Tests — expand integration coverage, add fetcher mocks |
+| [#10](https://github.com/incendiary/RubricAI/issues/10) | ✅ Done | Tests — expand integration coverage, add fetcher mocks |
 | [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 
