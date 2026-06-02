@@ -5,9 +5,9 @@ from .definitions import (
     EPSS_HIGH_THRESHOLD,
     HIGH_UTILITY_TYPES,
     LANE_BASES,
-    LANE_TARGETS,
     POLICY_VERSION,
     STRONG_MITIGATION_TYPES,
+    get_lane_targets,
 )
 
 
@@ -113,16 +113,16 @@ def evaluate(
         )
 
     # --- Remediation action ---
-    if lane == "critical":
+    targets = get_lane_targets()
+    target_days = targets[lane]
+    if target_days is None:
+        actions.append("Schedule on next patch train.")
+    elif lane == "critical":
         actions.append(
-            "Remediate within 72 hours or apply immediate compensating controls."
+            f"Remediate within {target_days * 24} hours or apply immediate compensating controls."
         )
-    elif lane == "high":
-        actions.append("Remediate within 7 days.")
-    elif lane == "medium":
-        actions.append("Remediate within 30 days.")
     else:
-        actions.append("Schedule on next patch train (target 120 days, max 240 days).")
+        actions.append(f"Remediate within {target_days} days.")
 
     # --- Evidence gaps ---
     if lane in ("critical", "high"):
@@ -151,7 +151,7 @@ def evaluate(
         policy_version=policy_version,
         lane=lane,
         target=RemediationTarget(
-            days=LANE_TARGETS[lane],
+            days=targets[lane],
             basis=LANE_BASES[lane],
         ),
         score_breakdown=ScoreBreakdown(
