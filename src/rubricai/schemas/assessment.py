@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class RemediationTarget(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    days: int = Field(ge=0)
+    days: int | None = None  # None means "patch train" — no fixed SLA
     basis: str | None = None
 
 

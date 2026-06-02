@@ -31,12 +31,14 @@ The AI client runs the interview (collecting finding context), then calls the MC
 
 **CHML lanes:**
 
-| Lane | Trigger | Target |
-|------|---------|--------|
+| Lane | Trigger | Default target |
+|------|---------|----------------|
 | Critical | KEV listed + internet-exposed + high utility (RCE/auth bypass/priv-esc/data access) | 72 hours |
 | High | Internet-exposed + EPSS ≥ 0.5 or PoC available + high utility | 7 days |
-| Medium | Constrained/internal reachability, lower impact, or partial mitigations | 30 days |
-| Low | Local-only + low utility, or strong causal mitigations blocking the exploit path | Patch train (120–240 days) |
+| Medium | Constrained/internal reachability, lower impact, or partial mitigations | Patch train |
+| Low | Local-only + low utility, or strong causal mitigations blocking the exploit path | Patch train |
+
+All four lane targets are configurable — see [Environment variables](#environment-variables).
 
 **Guardrails:**
 - External intel (KEV, high EPSS, PoC) can escalate urgency but cannot downgrade a finding.
@@ -181,6 +183,10 @@ pre-commit run --all-files
 | `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
 | `RUBRICAI_REPORT_DIR` | `./reports` | Directory for persisted report cards |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
+| `RUBRICAI_CRITICAL_DAYS` | `3` | Override Critical lane SLA (days, or `patch_train`) |
+| `RUBRICAI_HIGH_DAYS` | `7` | Override High lane SLA (days, or `patch_train`) |
+| `RUBRICAI_MEDIUM_DAYS` | `patch_train` | Override Medium lane SLA (days, or `patch_train`) |
+| `RUBRICAI_LOW_DAYS` | `patch_train` | Override Low lane SLA (days, or `patch_train`) |
 
 ---
 
