@@ -1,0 +1,7 @@
+[extend]
+useDefault = true
+
+[allowlist]
+# .secrets.baseline stores SHA-1 hashes of known false-positive strings;
+# these hashes have enough entropy to trigger generic-api-key rules.
+paths = [".secrets.baseline"]
