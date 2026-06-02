@@ -56,8 +56,8 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 git clone --branch v0.4.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: py -m venv .venv
 
 pip install -e ".[dev]"
 pre-commit install
