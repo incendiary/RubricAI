@@ -3,11 +3,11 @@
 import json
 
 import pytest
+from pydantic import ValidationError
 
 from src.rubricai.schemas.evidence import EvidenceItem
 from src.rubricai.tools.environment import env_read, env_write
 from src.rubricai.tools.report import report_generate
-
 
 # ---------------------------------------------------------------------------
 # env_read / env_write
@@ -106,7 +106,7 @@ def test_evidence_item_unverified_by_default():
 
 
 def test_evidence_item_invalid_type():
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         EvidenceItem(claim="x", type="invalid_type")
 
 
