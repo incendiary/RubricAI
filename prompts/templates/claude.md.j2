@@ -1,0 +1,37 @@
+{{ workflow }}
+
+---
+
+## Claude Desktop Configuration
+
+To use RubricAI with Claude Desktop, add the following to your `claude_desktop_config.json`:
+
+**stdio (local install):**
+```json
+{
+  "mcpServers": {
+    "rubricai": {
+      "command": "python",
+      "args": ["-m", "src.main"],
+      "cwd": "/path/to/RubricAI",
+      "env": {
+        "RUBRICAI_TRANSPORT": "stdio",
+        "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports"
+      }
+    }
+  }
+}
+```
+
+**SSE (Docker / remote):**
+```json
+{
+  "mcpServers": {
+    "rubricai": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+Paste the content of this file (above the configuration block) into the **System Prompt** field in Claude Desktop settings.

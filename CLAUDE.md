@@ -1,10 +1,10 @@
 # Project Publication Readiness — Python
 
 ## Context
-- **Type:** <!-- e.g. Red team tool / utility / library -->
-- **Authorization:** <!-- e.g. All development under signed scope of work -->
-- **Public release intent:** <!-- e.g. Educational reference / portfolio -->
-- **Audience:** <!-- e.g. Security professionals / developers -->
+- **Type:** Vulnerability prioritisation MCP server + AI interview workflow
+- **Authorization:** No offensive capability — fetches public intel only (CISA KEV, EPSS, NVD)
+- **Public release intent:** Portfolio / professional reference for security engineering workflows
+- **Audience:** Security engineers, AppSec teams, vulnerability management practitioners
 
 Fill in the four fields above before starting the audit.
 

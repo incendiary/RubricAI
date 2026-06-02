@@ -38,6 +38,12 @@ Thumbs.db
 # Secrets / env
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 secrets.json
+
+# RubricAI generated output
+reports/
+.cache/
+prompts/out/
