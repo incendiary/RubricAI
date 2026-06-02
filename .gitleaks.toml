@@ -1,7 +1,29 @@
+title = "gitleaks config"
+
+# Extends gitleaks' built-in ruleset (API keys, tokens, private keys, connection strings).
 [extend]
 useDefault = true
 
+# Corporate reference rule.
+# RubricAI is a public portfolio tool — no corporate/client engagement values are
+# present. The rule below is left as a placeholder to document the pattern; it will
+# never fire because the regex only matches literal placeholder text.
+#
+# To activate for a private fork: replace the regex values with real patterns
+# (employer name, internal domain, engagement hostname) and do NOT commit to a
+# public repo.
+
+[[rules]]
+id = "corporate-refs"
+description = "Internal corporate or client references"
+regex = '''(?i)(<CORP_NAME>|<DOMAIN_SUFFIX>|<ENGAGEMENT_HOSTNAME>)'''
+tags = ["corporate", "sensitive"]
+
 [allowlist]
-# .secrets.baseline stores SHA-1 hashes of known false-positive strings;
-# these hashes have enough entropy to trigger generic-api-key rules.
-paths = [".secrets.baseline"]
+paths = [
+  '''.gitleaks\.toml''',
+  '''\.git/''',
+  # .secrets.baseline stores SHA-1 hashes of known false-positive strings;
+  # those hashes have enough entropy to fire generic-api-key rules.
+  '''.secrets\.baseline''',
+]
