@@ -53,7 +53,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.2.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.3.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python -m venv .venv
@@ -138,23 +138,86 @@ Paste the output into your client's system prompt field.
 An AI client conducts a session like this:
 
 ```
+0. env_read()
+   → load existing environment state (components, network, standing mitigations)
+   → pre-populate interview answers; skip questions already answered
+
 1. Interview engineer — collect finding fields:
      component, version, entry_point, reachability, attacker_utility,
      mitigations, data_impact, environment
+   → ask for supporting evidence for any mitigation or reachability claim
 
-2. Call intel_lookup(cves=["CVE-XXXX-YYYY"])
+2. intel_lookup(cves=["CVE-XXXX-YYYY"])
    → returns KEV status, EPSS score, CVSS, PoC availability
 
-3. Call score_evaluate(finding=..., intel=...)
-   → returns lane (critical/high/medium/low), target days,
-     rationale, evidence gaps, score breakdown
+3. score_evaluate(finding=..., intel=...)
+   → returns lane (critical/high/medium/low), target, rationale, evidence gaps
 
-4. Call report_generate(finding=..., intel=..., assessment=...)
+4. report_generate(finding=..., intel=..., assessment=..., evidence=[...])
    → persists markdown + JSON report cards to RUBRICAI_REPORT_DIR
-   → returns rendered markdown for display
+   → evidence items stored in JSON; Evidence section rendered in markdown
+
+5. env_write(state=...)
+   → save updated environment state with session_log entry
 ```
 
 Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUBRICAI_REPORT_DIR` (default `./reports/`).
+
+---
+
+## Environment state
+
+RubricAI maintains a versioned environment state file so the AI accumulates context across sessions rather than starting cold each time.
+
+### Bootstrap
+
+```bash
+cp environment/initial_state_template.json environment/state_v001.json
+# Edit state_v001.json: fill in your components, network topology, standing mitigations
+```
+
+The AI will read this at the start of the next session and use it to skip questions it can already answer.
+
+### Versioning
+
+Every `env_write` call increments the version counter and writes a new `state_vNNN.json` — existing files are never overwritten. `state_latest.json` is always a copy of the most recent version.
+
+```
+environment/
+  initial_state_template.json   ← checked in, copy to bootstrap
+  state_v001.json               ← your initial description
+  state_v002.json               ← updated after first session
+  state_latest.json             ← always the most recent
+```
+
+Set `RUBRICAI_ENV_DIR` to change the directory.
+
+### State file fields
+
+| Field | Description |
+|-------|-------------|
+| `components` | Known components: name, version, type, environment, hosting |
+| `network` | Topology: which services are internet-exposed, internal, etc. |
+| `standing_mitigations` | Controls that apply across all findings (WAF, ACL, etc.) |
+| `context_notes` | Free-form environment summary |
+| `session_log` | Append-only history of what each session assessed and learned |
+
+---
+
+## Evidence
+
+When an engineer claims a mitigation is in place (e.g. "we have a firewall blocking that port"), the AI can ask for supporting evidence and record it in the report.
+
+**How it works:** The AI asks the engineer to paste the relevant policy, config, or describe a screenshot. It assesses whether the content is consistent with the claim and sets `verified: true/false`. Evidence is stored in the report JSON and rendered in the markdown report under an **Evidence** section.
+
+**What to provide:**
+- Firewall/ACL policy output (`iptables -L`, security group rules, NSG config)
+- WAF rule excerpts
+- Network config showing segmentation
+- Log extracts confirming blocked traffic
+- Screenshot descriptions
+
+Evidence type values: `firewall_policy`, `network_config`, `acl_rule`, `waf_config`, `screenshot_description`, `log_extract`, `other`.
 
 ---
 
@@ -162,9 +225,11 @@ Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUB
 
 | Tool | Description |
 |------|-------------|
+| `env_read` | Read the current environment state (or empty template if none exists) |
+| `env_write` | Write a versioned update to the environment state |
 | `intel_lookup` | Fetch KEV, EPSS, CVSS, PoC, and vendor signals for one or more CVEs |
 | `score_evaluate` | Apply CHML policy and return lane, target, rationale, evidence gaps |
-| `report_generate` | Produce markdown + JSON report card, persist to `RUBRICAI_REPORT_DIR` |
+| `report_generate` | Produce markdown + JSON report card with optional evidence, persist to disk |
 | `policy_get` | Return the current CHML policy definition for auditability |
 
 ---

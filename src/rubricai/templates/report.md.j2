@@ -13,7 +13,7 @@
 | Field | Value |
 |-------|-------|
 | **Lane** | {{ assessment.lane | upper }} |
-| **Remediation target** | {{ assessment.target.days }} day(s) |
+| **Remediation target** | {% if assessment.target.days is not none %}{{ assessment.target.days }} day(s){% else %}Patch train{% endif %} |
 | **Basis** | {{ assessment.target.basis }} |
 
 ---
@@ -127,6 +127,32 @@ No mitigations documented.
 
 ---
 
+{% if evidence %}
+## Evidence
+
+| Claim | Type | Verified |
+|-------|------|----------|
+{% for e in evidence %}
+| {{ e.claim }} | {{ e.type }} | {% if e.verified %}✅ Verified{% else %}❌ Unverified{% endif %} |
+{% endfor %}
+
+{% for e in evidence %}
+{% if e.content or e.analyst_note %}
+**{{ e.claim }}**
+{% if e.content %}
+```
+{{ e.content }}
+```
+{% endif %}
+{% if e.analyst_note %}
+*Analyst note: {{ e.analyst_note }}*
+{% endif %}
+
+{% endif %}
+{% endfor %}
+---
+
+{% endif %}
 ## Evidence Pointers
 
 {% if finding.evidence_pointers %}
