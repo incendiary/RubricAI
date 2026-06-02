@@ -53,7 +53,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.1.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.2.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python -m venv .venv
