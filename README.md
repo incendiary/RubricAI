@@ -49,8 +49,11 @@ All four lane targets are configurable — see [Environment variables](#environm
 
 ## Setup
 
+Download the [latest release](https://github.com/incendiary/RubricAI/releases/latest) or clone a specific tag:
+
 ```bash
-git clone git@github.com:incendiary/RubricAI.git
+# Latest release (recommended)
+git clone --branch v0.1.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python -m venv .venv
@@ -60,6 +63,13 @@ pip install -e ".[dev]"
 pre-commit install
 
 cp .env.example .env
+```
+
+To track development (not recommended for production use):
+
+```bash
+git clone git@github.com:incendiary/RubricAI.git
+cd RubricAI
 ```
 
 ### Requirements
