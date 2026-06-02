@@ -1,18 +1,26 @@
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "RubricAI"
 version = "0.1.0"
-description = "TODO: project description"
+description = "Vulnerability prioritisation MCP server — deterministic CHML scoring with CISA KEV, EPSS, and NVD intel"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
-dependencies = []
+dependencies = [
+  "fastmcp>=0.4",
+  "httpx>=0.27",
+  "pydantic>=2.0",
+  "jinja2>=3.1",
+]
+
+[project.scripts]
+rubricai = "main:main"
 
 [project.optional-dependencies]
-dev = ["black", "ruff", "isort", "pre-commit", "pytest", "pytest-cov", "detect-secrets"]
+dev = ["black", "ruff", "isort", "pre-commit", "pytest", "pytest-cov", "pytest-asyncio", "detect-secrets"]
 
 [tool.black]
 line-length = 88
@@ -28,6 +36,10 @@ ignore = ["S101"]  # allow assert in tests
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S", "ANN"]
+# Rationale/action strings are intentionally verbose prose — line length not enforced
+"src/rubricai/policy/chml.py" = ["E501"]
+"src/rubricai/policy/definitions.py" = ["E501"]
+"scripts/render_prompt.py" = ["E501"]
 
 [tool.isort]
 profile = "black"
@@ -36,3 +48,4 @@ line_length = 88
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=src --cov-report=term-missing"
+asyncio_mode = "auto"
