@@ -1,4 +1,6 @@
 from .assessment import Assessment, RemediationTarget, ScoreBreakdown
+from .environment import EnvironmentState
+from .evidence import EvidenceItem
 from .finding import (
     Component,
     DataImpact,
@@ -18,7 +20,9 @@ __all__ = [
     "DataImpact",
     "EntryPoint",
     "Environment",
+    "EnvironmentState",
     "EpssInfo",
+    "EvidenceItem",
     "EvidencePointer",
     "Finding",
     "IntelResult",

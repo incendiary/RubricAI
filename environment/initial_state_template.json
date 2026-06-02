@@ -1,0 +1,34 @@
+{
+  "schema_version": "1",
+  "version": 1,
+  "created_at": "FILL_IN_ISO8601",
+  "updated_at": "FILL_IN_ISO8601",
+  "components": [
+    {
+      "name": "ExampleService",
+      "version": "1.0.0",
+      "type": "service",
+      "environment": "production",
+      "hosting": "cloud",
+      "notes": "Customer-facing API — replace with your real components"
+    }
+  ],
+  "network": {
+    "internet_exposed_services": ["ExampleService"],
+    "constrained_external": [],
+    "internal_only": [],
+    "local_only": [],
+    "notes": "Describe your network topology here — what is exposed where"
+  },
+  "standing_mitigations": [
+    {
+      "type": "waf_rule",
+      "description": "Cloudflare WAF in front of all internet-exposed services",
+      "applies_to": ["ExampleService"],
+      "verified": false,
+      "notes": "Set verified: true only after providing evidence to the AI"
+    }
+  ],
+  "context_notes": "Replace this with a short description of your environment: team, product, key risk areas, any standing constraints the AI should know about.",
+  "session_log": []
+}
