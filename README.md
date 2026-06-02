@@ -93,25 +93,23 @@ python scripts/render_prompt.py --target claude
 python -m src.main
 ```
 
-Add to `claude_desktop_config.json` (usually `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS):
+Register the server in `claude_desktop_config.json` using the merge script (safe to run on an existing config — it adds only the `rubricai` key and leaves everything else intact):
 
-```json
-{
-  "mcpServers": {
-    "rubricai": {
-      "command": "python",
-      "args": ["-m", "src.main"],
-      "cwd": "/path/to/RubricAI",
-      "env": {
-        "RUBRICAI_TRANSPORT": "stdio",
-        "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports"
-      }
-    }
-  }
-}
+```bash
+# Preview what will change
+python scripts/install_claude_config.py
+
+# Apply
+python scripts/install_claude_config.py --write
 ```
 
-Open a new Claude Desktop conversation, paste the contents of `prompts/out/claude_system_prompt.md` as the system prompt, and tell Claude you have a CVE to assess.
+The script auto-detects the config path on macOS, Windows, and Linux. To override:
+
+```bash
+python scripts/install_claude_config.py --config ~/my-config.json --write
+```
+
+Restart Claude Desktop after writing. Open a new conversation, paste the contents of `prompts/out/claude_system_prompt.md` as the system prompt, and tell Claude you have a CVE to assess.
 
 ### Team deployment — Docker (SSE transport)
 
