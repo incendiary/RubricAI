@@ -65,6 +65,10 @@ pre-commit install
 cp .env.example .env
 ```
 
+> **NVD API key — strongly recommended**
+> Without a key the NVD rate limit is 5 requests per 30 seconds, which will throttle any session assessing more than a handful of CVEs. With a free key it rises to 50 req/30s.
+> Register at **https://nvd.nist.gov/developers/request-an-api-key** (takes ~30 seconds), then set `NVD_API_KEY=<your-key>` in your `.env` file.
+
 To track development (not recommended for production use):
 
 ```bash
