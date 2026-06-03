@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "black==25.1.0" "ruff==0.11.9" isort
+          pip install "black==25.1.0" "ruff==0.15.15" "isort==8.0.1"
 
       - name: Black
         run: black --check .
@@ -38,6 +38,10 @@ jobs:
     needs: lint
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Fetch tags on main pushes so test_version_not_behind_latest_tag runs.
+          # On PRs this is false — the test skips gracefully via pytest.skip.
+          fetch-tags: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -47,7 +51,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          pip install -r requirements-lock.txt
+          pip install -e . --no-deps
 
       - name: Run tests
         run: pytest
