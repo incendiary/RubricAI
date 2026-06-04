@@ -86,16 +86,14 @@ cd RubricAI
 
 ### Local — Claude Desktop (stdio transport)
 
-Generate a system prompt and start the server:
+Generate the system prompt:
 
 ```bash
-# Generate the Claude-specific system prompt
-python scripts/render_prompt.py --target claude
+python3 scripts/render_prompt.py --target claude
 # → prompts/out/claude_system_prompt.md
-
-# Start the MCP server
-python -m src.main
 ```
+
+> **Note:** You do not need to manually start the server. Claude Desktop starts it automatically using the config written by `install_claude_config.py`. The `rubricai` command is only needed if you want to test the server directly from the terminal.
 
 Register the server in `claude_desktop_config.json` using the merge script (safe to run on an existing config — it adds only the `rubricai` key and leaves everything else intact):
 
