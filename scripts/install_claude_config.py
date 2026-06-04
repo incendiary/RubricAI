@@ -43,8 +43,17 @@ def _default_config_path() -> pathlib.Path:
 
 
 def _rubricai_entry(project_root: pathlib.Path) -> dict:
+    # Use the venv Python so Claude Desktop picks up installed packages.
+    # Claude Desktop spawns the server as a bare subprocess — it does not
+    # inherit the shell or any activated venv, so a bare "python" or "python3"
+    # command will fail on most systems.
+    root = project_root.resolve()
+    if sys.platform == "win32":
+        python = str(root / ".venv" / "Scripts" / "python.exe")
+    else:
+        python = str(root / ".venv" / "bin" / "python")
     return {
-        "command": "python",
+        "command": python,
         "args": ["-m", "src.main"],
         "cwd": str(project_root.resolve()),
         "env": {
@@ -155,6 +164,14 @@ def main() -> None:
 
     if args.write:
         config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Back up the existing config before writing so it can be restored manually
+        # if something goes wrong.
+        if config_path.exists():
+            backup_path = config_path.with_suffix(".json.bak")
+            backup_path.write_text(
+                config_path.read_text(encoding="utf-8"), encoding="utf-8"
+            )
+            print(f"Backup written to {backup_path}")
         config_path.write_text(merged_text, encoding="utf-8")
         print(f"Written to {config_path}")
         print()
