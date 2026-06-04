@@ -6,7 +6,12 @@ services:
     environment:
       - RUBRICAI_TRANSPORT=sse
       - RUBRICAI_REPORT_DIR=/reports
+      - RUBRICAI_ENV_DIR=/state
       - NVD_API_KEY=${NVD_API_KEY:-}
     volumes:
       - ./reports:/reports
       - ./.cache:/app/.cache
+      - rubricai_state:/state
+
+volumes:
+  rubricai_state:

@@ -3,6 +3,8 @@
 Downloads the full catalog once per TTL window and indexes it by CVE ID.
 """
 
+import os
+
 import httpx
 
 from ..cache import FileCache
@@ -11,6 +13,7 @@ _CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_v
 _NS = "kev"
 _CATALOG_KEY = "catalog"
 _TTL_HOURS = 24
+_HTTP_TIMEOUT = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
 
 _cache = FileCache()
 
@@ -33,7 +36,7 @@ async def fetch(cve_id: str) -> dict:
 
 
 async def _download_and_index() -> dict:
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         resp = await client.get(_CATALOG_URL)
         resp.raise_for_status()
         data = resp.json()

@@ -14,7 +14,7 @@ from ..schemas.finding import Finding
 from ..schemas.intel import IntelResult
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
-_DEFAULT_REPORT_DIR = Path("./reports")
+_DEFAULT_REPORT_DIR = Path.home() / ".local" / "share" / "rubricai" / "reports"
 
 
 def _report_dir() -> Path:
