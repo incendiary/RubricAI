@@ -164,6 +164,12 @@ def main() -> None:
 
     if args.write:
         config_path.parent.mkdir(parents=True, exist_ok=True)
+        # Back up the existing config before writing so it can be restored manually
+        # if something goes wrong.
+        if config_path.exists():
+            backup_path = config_path.with_suffix(".json.bak")
+            backup_path.write_text(config_path.read_text(encoding="utf-8"), encoding="utf-8")
+            print(f"Backup written to {backup_path}")
         config_path.write_text(merged_text, encoding="utf-8")
         print(f"Written to {config_path}")
         print()
