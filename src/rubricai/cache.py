@@ -6,8 +6,11 @@ from pathlib import Path
 from typing import Any
 
 
+_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "rubricai"
+
+
 class FileCache:
-    def __init__(self, cache_dir: str | Path = ".cache"):
+    def __init__(self, cache_dir: str | Path = _DEFAULT_CACHE_DIR):
         self._dir = Path(cache_dir)
         self._dir.mkdir(parents=True, exist_ok=True)
 
