@@ -43,22 +43,22 @@ def _default_config_path() -> pathlib.Path:
 
 
 def _rubricai_entry(project_root: pathlib.Path) -> dict:
-    # Use the venv Python so Claude Desktop picks up installed packages.
-    # Claude Desktop spawns the server as a bare subprocess — it does not
-    # inherit the shell or any activated venv, so a bare "python" or "python3"
-    # command will fail on most systems.
+    # Use the installed console script rather than `python -m src.main`.
+    # `src` is a layout convention and is not importable after `pip install -e .`
+    # (only `rubricai` is installed). The `rubricai` entry point script is
+    # created by pip in .venv/bin/ and works without any module path gymnastics.
     root = project_root.resolve()
     if sys.platform == "win32":
-        python = str(root / ".venv" / "Scripts" / "python.exe")
+        command = str(root / ".venv" / "Scripts" / "rubricai.exe")
     else:
-        python = str(root / ".venv" / "bin" / "python")
+        command = str(root / ".venv" / "bin" / "rubricai")
     return {
-        "command": python,
-        "args": ["-m", "src.main"],
-        "cwd": str(project_root.resolve()),
+        "command": command,
+        "args": [],
+        "cwd": str(root),
         "env": {
             "RUBRICAI_TRANSPORT": "stdio",
-            "RUBRICAI_REPORT_DIR": str((project_root / "reports").resolve()),
+            "RUBRICAI_REPORT_DIR": str(root / "reports"),
         },
     }
 
