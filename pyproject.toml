@@ -21,7 +21,7 @@ rubricai = "main:main"
 
 [project.optional-dependencies]
 dev = [
-  "black~=25.1",
+  "black>=25.1,<27.0",
   "ruff~=0.15",
   "isort~=8.0",
   "pre-commit~=4.6",
