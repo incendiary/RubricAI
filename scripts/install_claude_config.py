@@ -168,7 +168,9 @@ def main() -> None:
         # if something goes wrong.
         if config_path.exists():
             backup_path = config_path.with_suffix(".json.bak")
-            backup_path.write_text(config_path.read_text(encoding="utf-8"), encoding="utf-8")
+            backup_path.write_text(
+                config_path.read_text(encoding="utf-8"), encoding="utf-8"
+            )
             print(f"Backup written to {backup_path}")
         config_path.write_text(merged_text, encoding="utf-8")
         print(f"Written to {config_path}")
