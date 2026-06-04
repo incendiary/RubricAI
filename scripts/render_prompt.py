@@ -8,6 +8,7 @@ Usage:
 
 Output is written to prompts/out/<target>_system_prompt.md
 """
+
 import argparse
 from pathlib import Path
 
