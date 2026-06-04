@@ -107,6 +107,8 @@ python scripts/install_claude_config.py
 python scripts/install_claude_config.py --write
 ```
 
+The script writes the full path to the venv Python interpreter (e.g. `/Users/you/RubricAI/.venv/bin/python`) as the `command` field. This is intentional — Claude Desktop spawns the server as a bare subprocess with no shell context, so a bare `python` or `python3` command would fail. The long path is expected and correct.
+
 The script auto-detects the config path on macOS, Windows, and Linux. To override:
 
 ```bash
