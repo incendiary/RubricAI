@@ -107,15 +107,29 @@ python scripts/install_claude_config.py
 python scripts/install_claude_config.py --write
 ```
 
-The script writes the full path to the venv Python interpreter (e.g. `/Users/you/RubricAI/.venv/bin/python`) as the `command` field. This is intentional — Claude Desktop spawns the server as a bare subprocess with no shell context, so a bare `python` or `python3` command would fail. The long path is expected and correct.
+The script writes the full path to the `rubricai` entry point script (e.g. `/Users/you/RubricAI/.venv/bin/rubricai`) as the `command` field. This is intentional — Claude Desktop spawns the server as a bare subprocess with no shell context, so bare commands like `python` or `python3` fail. The long path is expected and correct.
 
 The script auto-detects the config path on macOS, Windows, and Linux. To override:
 
 ```bash
-python scripts/install_claude_config.py --config ~/my-config.json --write
+python3 scripts/install_claude_config.py --config ~/my-config.json --write
 ```
 
-Restart Claude Desktop after writing. Open a new conversation, paste the contents of `prompts/out/claude_system_prompt.md` as the system prompt, and tell Claude you have a CVE to assess.
+Restart Claude Desktop after writing.
+
+### Starting a session
+
+1. Generate the system prompt (once, or after workflow updates):
+   ```bash
+   python3 scripts/render_prompt.py --target claude
+   # → prompts/out/claude_system_prompt.md
+   ```
+
+2. In Claude Desktop, create a **Project**, paste the contents of `prompts/out/claude_system_prompt.md` as the project instructions, and add RubricAI as an allowed MCP server for that project.
+
+3. Start a conversation and say something like: *"I have a CVE to assess"* or *"Let's triage CVE-2024-1234"*. Claude will call `env_read()` automatically, surface any existing environment context, and begin the interview.
+
+There is no slash command — the system prompt is the trigger. Every conversation in the project inherits the instructions and MCP tools automatically.
 
 ### Team deployment — Docker (SSE transport)
 
@@ -168,6 +182,66 @@ An AI client conducts a session like this:
 ```
 
 Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUBRICAI_REPORT_DIR` (default `./reports/`).
+
+---
+
+## Example interview
+
+The following is a condensed example of what a RubricAI session looks like in Claude Desktop. The engineer answers questions; Claude calls the MCP tools and returns the verdict.
+
+---
+
+**Engineer:** I need to assess CVE-2024-21887 — it's a command injection in Ivanti Connect Secure.
+
+**Claude:** I can see your environment includes: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Is this still current?
+
+**Engineer:** Yes, still current. The affected component is Ivanti Connect Secure v22.3, it's our VPN gateway — internet-facing.
+
+**Claude:** Got it. What's the exploit entry point?
+
+**Engineer:** It's an authenticated HTTP request to the web management interface, port 443.
+
+**Claude:** What can an attacker achieve? (RCE, auth bypass, privilege escalation, data access, etc.)
+
+**Engineer:** Remote code execution. An attacker with any valid user credentials can run OS commands as root.
+
+**Claude:** Is there authentication required to reach the vulnerable function?
+
+**Engineer:** Yes, but only low-privilege user credentials — easily obtained or brute-forced.
+
+**Claude:** Any mitigations in place? WAF rules, ACL, vendor workaround?
+
+**Engineer:** We pushed Ivanti's XML mitigation workaround on the 3rd. I can paste the change ticket.
+
+**Claude:** Please do — I'll record it as evidence.
+
+**Engineer:** *[pastes INC-20240103-0042: applied mitigation per Ivanti KB44093, verified by change manager]*
+
+**Claude:** *(calling `intel_lookup`, `score_evaluate`, `report_generate`)*
+
+---
+
+**Verdict: 🔴 CRITICAL — Remediate within 72 hours**
+
+| Signal | Value |
+|--------|-------|
+| KEV listed | ✅ Yes — due 2024-01-31 |
+| EPSS | 0.94 (99th percentile) |
+| Reachability | Internet-exposed |
+| Utility | RCE as root |
+| Mitigation | Vendor workaround applied (unverified) |
+
+**Rationale:** KEV-listed + internet-exposed + RCE = Critical under CHML policy. The vendor workaround does not shift the lane because it has not been independently verified and Ivanti has noted bypasses exist.
+
+**Evidence gaps:**
+- [ ] Vendor workaround verification: confirm the mitigation is active and covers your specific build
+- [ ] Confirm no authentication bypass for the management interface exists on your build
+
+**Report saved to:** `reports/FIND-ICS-001_20240104T103000.md`
+
+---
+
+The JSON report, markdown card, and all evidence are written to disk for submission to your central security review queue.
 
 ---
 
@@ -382,6 +456,7 @@ pre-commit run --all-files
 | [#10](https://github.com/incendiary/RubricAI/issues/10) | ✅ Done | Tests — expand integration coverage, add fetcher mocks |
 | [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
+| [#31](https://github.com/incendiary/RubricAI/issues/31) | ⬜ Open | MCP server fix — use rubricai entry point instead of python -m src.main |
 
 ---
 
