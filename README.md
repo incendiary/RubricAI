@@ -53,7 +53,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.5.1 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.5.2 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -456,7 +456,7 @@ pre-commit run --all-files
 | [#10](https://github.com/incendiary/RubricAI/issues/10) | ✅ Done | Tests — expand integration coverage, add fetcher mocks |
 | [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
-| [#31](https://github.com/incendiary/RubricAI/issues/31) | ⬜ Open | MCP server fix — use rubricai entry point instead of python -m src.main |
+| [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
 
 ---
 
