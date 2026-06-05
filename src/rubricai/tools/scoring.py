@@ -25,7 +25,9 @@ def score_evaluate(
     from ..policy.definitions import POLICY_VERSION
 
     f = Finding.model_validate(finding)
-    i = IntelResult.model_validate(intel)
+    # Strip AI-use fields added by intel_lookup that are not in IntelResult schema
+    intel_clean = {k: v for k, v in intel.items() if k != "derived_finding_context"}
+    i = IntelResult.model_validate(intel_clean)
     version = policy_version or POLICY_VERSION
 
     assessment = evaluate(f, i, policy_version=version)
