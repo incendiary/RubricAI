@@ -23,19 +23,38 @@ def _report_dir() -> Path:
     return p
 
 
+def _jinja_env() -> Environment:
+    return Environment(
+        loader=FileSystemLoader(str(_TEMPLATE_DIR)),
+        autoescape=select_autoescape([]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+
 def _render_markdown(
     finding: Finding,
     intel: IntelResult,
     assessment: Assessment,
     evidence: list[EvidenceItem],
 ) -> str:
-    env = Environment(
-        loader=FileSystemLoader(str(_TEMPLATE_DIR)),
-        autoescape=select_autoescape([]),
-        trim_blocks=True,
-        lstrip_blocks=True,
+    template = _jinja_env().get_template("report.md.j2")
+    return template.render(
+        finding=finding,
+        intel=intel,
+        assessment=assessment,
+        evidence=evidence,
+        generated_at=datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
-    template = env.get_template("report.md.j2")
+
+
+def _render_html_card(
+    finding: Finding,
+    intel: IntelResult,
+    assessment: Assessment,
+    evidence: list[EvidenceItem],
+) -> str:
+    template = _jinja_env().get_template("report.card.html.j2")
     return template.render(
         finding=finding,
         intel=intel,
@@ -106,6 +125,16 @@ def report_generate(
         )
         saved_paths.append(str(json_path))
         result["report_json"] = report_json
+
+    if "pdf" in requested:
+        from weasyprint import HTML  # noqa: PLC0415
+
+        html = _render_html_card(f, i, a, ev)
+        pdf_bytes = HTML(string=html).write_pdf()
+        pdf_path = report_dir / f"{base_name}.pdf"
+        pdf_path.write_bytes(pdf_bytes)
+        saved_paths.append(str(pdf_path))
+        result["report_pdf_path"] = str(pdf_path)
 
     result["saved_to"] = saved_paths
     return result
