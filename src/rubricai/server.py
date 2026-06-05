@@ -4,6 +4,8 @@ from typing import Any
 
 from fastmcp import FastMCP
 
+from .tools.bom import bom_check as _bom_check
+from .tools.bom import bom_update as _bom_update
 from .tools.environment import env_read as _env_read
 from .tools.environment import env_write as _env_write
 from .tools.intel import lookup as _intel_lookup
@@ -102,3 +104,44 @@ def policy_get(policy_version: str | None = None) -> dict[str, Any]:
         policy_version: Version to retrieve. Currently only chml-v0.1 exists.
     """
     return _policy_get(policy_version)
+
+
+@mcp.tool()
+def bom_update(components: list[dict[str, Any]]) -> dict[str, Any]:
+    """Store or replace the Bill of Materials (installed software stack).
+
+    Call this when an engineer supplies their component list. The BOM is
+    persisted to the environment state and used by ``bom_check`` to monitor
+    for new CVEs.
+
+    Args:
+        components: List of component dicts. Each requires ``name`` (str) and
+                    ``version`` (str). Optional: ``type``, ``vendor``, ``notes``.
+
+    Example::
+
+        bom_update([
+            {"name": "nginx", "version": "1.24.0", "type": "service"},
+            {"name": "postgresql", "version": "15.2", "vendor": "PostgreSQL"},
+            {"name": "openssl", "version": "3.1.4", "type": "library"},
+        ])
+    """
+    return _bom_update(components)
+
+
+@mcp.tool()
+async def bom_check(days_back: int = 7) -> dict[str, Any]:
+    """Check all BOM components for CVEs published or modified recently.
+
+    Queries NVD for each stored BOM component and returns any matching CVEs.
+    Useful for a daily/weekly "are there any new CVEs I need to look at?"
+    workflow.
+
+    Args:
+        days_back: How far back to search (default: 7 days).
+
+    Returns:
+        Dict with ``findings`` (grouped by component), ``total_cves``, and
+        a human-readable ``summary``.
+    """
+    return await _bom_check(days_back)

@@ -13,8 +13,36 @@ Before asking any interview questions:
 1. Call `env_read()` to retrieve the current environment state.
 2. If a state exists (version > 0 or non-empty components/network/mitigations), summarise the key context to the engineer and confirm it is still accurate:
    - "I can see your environment includes: [components]. [Network notes]. [Standing mitigations]. Is this still current?"
-3. Pre-populate interview answers from the state where possible — skip questions already answered unless the engineer wants to change them.
-4. If no state exists, proceed with the full interview and explain at the end that a state will be saved for future sessions.
+3. If a BOM is stored (`state.bom` is non-empty), mention it: "I have your BOM on record ([N] components). Want me to check it for new CVEs before we start?"
+4. Pre-populate interview answers from the state where possible — skip questions already answered unless the engineer wants to change them.
+5. If no state exists, proceed with the full interview and explain at the end that a state will be saved for future sessions.
+
+---
+
+## BOM Management
+
+The engineer can supply or update their Bill of Materials (installed software stack) at any time.
+
+### Storing a BOM
+When the engineer provides a component list (pasted JSON, CSV, or natural language), extract `name` and `version` for each component and call:
+```
+bom_update(components=[
+    {"name": "nginx", "version": "1.24.0", "type": "service"},
+    {"name": "postgresql", "version": "15.2", "vendor": "PostgreSQL Global Dev"},
+    ...
+])
+```
+Confirm the count stored and note that `bom_check` can now be used for CVE monitoring.
+
+### Daily CVE check
+When the engineer asks "any new CVEs for my stack?", "check my BOM", or similar:
+```
+bom_check(days_back=7)   # or days_back=1 for a daily check
+```
+Present findings grouped by component. For any CVE with CVSS ≥ 7.0, offer to start a full triage interview immediately.
+
+### BOM pre-population
+If the engineer says "this CVE affects [component]" and that component is in the BOM, pre-fill the component name and version fields from the stored BOM entry.
 
 ---
 
