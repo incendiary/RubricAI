@@ -1,6 +1,7 @@
 from ..schemas.assessment import Assessment, RemediationTarget, ScoreBreakdown
 from ..schemas.finding import Finding, Mitigation
 from ..schemas.intel import IntelResult
+from ..scoring.priority import compute_priority_score
 from .definitions import (
     EPSS_HIGH_THRESHOLD,
     HIGH_UTILITY_TYPES,
@@ -146,6 +147,8 @@ def evaluate(
             "KEV-listed CVE with no strong mitigations — patch is the only safe resolution."
         )
 
+    priority_score, priority_breakdown = compute_priority_score(finding, intel)
+
     return Assessment(
         policy_version=policy_version,
         lane=lane,
@@ -162,4 +165,6 @@ def evaluate(
         rationale=rationale,
         actions=actions,
         evidence_gaps=evidence_gaps,
+        priority_score=priority_score,
+        priority_score_breakdown=priority_breakdown,
     )

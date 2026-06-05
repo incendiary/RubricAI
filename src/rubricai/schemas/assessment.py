@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,3 +29,5 @@ class Assessment(BaseModel):
     rationale: list[str]
     actions: list[str] = Field(default_factory=list)
     evidence_gaps: list[str]
+    priority_score: float | None = None
+    priority_score_breakdown: dict[str, Any] | None = None

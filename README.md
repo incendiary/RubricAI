@@ -34,14 +34,33 @@ The AI client runs the interview (collecting finding context), then calls the MC
 | Lane | Trigger | Default target |
 |------|---------|----------------|
 | Critical | KEV listed + internet-exposed + high utility (RCE/auth bypass/priv-esc/data access) | 72 hours |
-| High | Internet-exposed + EPSS ≥ 0.5 or PoC available + high utility | 7 days |
-| Medium | Constrained/internal reachability, lower impact, or partial mitigations | Patch train |
+| High | Internet-exposed + high utility (RCE/auth bypass/priv-esc/data access); OR internet-exposed + EPSS ≥ 0.5 — no strong mitigations | 7 days |
+| Medium | Constrained/internal reachability, lower impact, or strong evidenced mitigations | Patch train |
 | Low | Local-only + low utility, or strong causal mitigations blocking the exploit path | Patch train |
 
 All four lane targets are configurable — see [Environment variables](#environment-variables).
 
+**Priority Score (0–10)**
+
+Each assessment also produces a `priority_score` — a numeric 0–10 value for sorting within a lane (e.g. which of two Criticals to patch first). CVSS base is one input (max 40%); the remaining weight comes from reachability, KEV/EPSS intel, attacker utility, and mitigation strength.
+
+| Scenario | CVSS | Reachability | KEV | EPSS | Utility | Mitigation | Score | Lane |
+|---|---|---|---|---|---|---|---|---|
+| KEV + internet + high EPSS + RCE | 9.8 | internet | ✅ | 0.90 | RCE | none | **9.4** | Critical |
+| KEV + internet + low EPSS + auth bypass | 7.5 | internet | ✅ | 0.20 | auth bypass | none | **8.0** | Critical |
+| Internet + RCE + EPSS 0.6 | 8.8 | internet | ❌ | 0.60 | RCE | none | **7.5** | High |
+| Internet + RCE, no intel signals | 8.8 | internet | ❌ | 0.05 | RCE | none | **6.5** | High |
+| Internet + RCE + partial mitigation | 8.8 | internet | ❌ | 0.10 | RCE | partial | **6.5** | High |
+| Internal + RCE, no mitigation | 8.8 | internal | ❌ | 0.05 | RCE | none | **4.5** | Medium |
+| Internal + RCE + **verified ACL** | 8.8 | internal | ❌ | 0.04 | RCE | **strong** | **3.0** | Medium |
+| Constrained + DoS, no intel | 5.0 | constrained | ❌ | 0.05 | DoS | none | **3.5** | Medium |
+| Local + DoS | 5.0 | local | ❌ | 0.05 | DoS | none | **2.0** | Low |
+| No CVSS data, internet + KEV + RCE | — | internet | ✅ | — | RCE | none | **4.5** | Critical/High |
+
+Score = `cvss × 0.4` + reachability (2.5/1.5/0.5/0) + intel (KEV +1.5, EPSS ≥0.5 +1.0, EPSS ≥0.1 +0.5) + utility bonus (high utility +0.5) − mitigation penalty (strong −1.5, partial −0.5), clamped 0–10.
+
 **Guardrails:**
-- External intel (KEV, high EPSS, PoC) can escalate urgency but cannot downgrade a finding.
+- External intel (KEV, high EPSS) can escalate urgency but cannot downgrade a finding. PoC availability is not used as a scoring signal — absence of public PoC does not reduce lane assignment.
 - Mitigations must be exploit-relevant to shift a lane — "EDR deployed" does not mitigate an IDOR.
 - Medium → Low requires a mitigation with a `causal_claim` of type `waf_rule`, `acl_segmentation`, `disable_feature`, `vendor_workaround`, or `virtual_patching`.
 
@@ -433,13 +452,14 @@ pre-commit run --all-files
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
-| `RUBRICAI_REPORT_DIR` | `./reports` | Directory for persisted report cards |
+| `RUBRICAI_REPORT_DIR` | `~/.local/share/rubricai/reports` | Directory for persisted report cards |
+| `RUBRICAI_ENV_DIR` | `~/.local/share/rubricai` | Directory for versioned environment state files |
+| `RUBRICAI_HTTP_TIMEOUT` | `30` | HTTP timeout (seconds) for CISA KEV, EPSS, and NVD fetches |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
 | `RUBRICAI_CRITICAL_DAYS` | `3` | Override Critical lane SLA (days, or `patch_train`) |
 | `RUBRICAI_HIGH_DAYS` | `7` | Override High lane SLA (days, or `patch_train`) |
 | `RUBRICAI_MEDIUM_DAYS` | `patch_train` | Override Medium lane SLA (days, or `patch_train`) |
 | `RUBRICAI_LOW_DAYS` | `patch_train` | Override Low lane SLA (days, or `patch_train`) |
-| `RUBRICAI_ENV_DIR` | `./environment` | Directory for versioned environment state files |
 
 ---
 
@@ -455,6 +475,7 @@ pre-commit run --all-files
 | [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 | [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
+| [#35](https://github.com/incendiary/RubricAI/issues/35) | 🔄 In progress | Priority Score — RubricAI-native 0–10 score for within-lane prioritisation |
 
 ---
 
