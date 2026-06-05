@@ -3,6 +3,8 @@
 import json
 from datetime import UTC, datetime
 
+import pytest
+
 from src.rubricai.tools.policy import policy_get
 from src.rubricai.tools.report import report_generate
 from src.rubricai.tools.scoring import score_evaluate
@@ -115,6 +117,7 @@ class TestReportGenerate:
         assert "No mitigations documented" in result["report_markdown"]
 
     def test_pdf_format_produces_valid_pdf(self, tmp_path, monkeypatch):
+        pytest.importorskip("weasyprint", reason="weasyprint not installed")
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
         result = report_generate(
             _finding_dict(), _intel_dict(), _assessment_dict(), formats=["pdf"]
@@ -128,6 +131,7 @@ class TestReportGenerate:
         assert len(list(tmp_path.glob("*.md"))) == 0
 
     def test_all_formats_produces_three_files(self, tmp_path, monkeypatch):
+        pytest.importorskip("weasyprint", reason="weasyprint not installed")
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
         result = report_generate(
             _finding_dict(),
