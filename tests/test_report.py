@@ -114,6 +114,33 @@ class TestReportGenerate:
         result = report_generate(_finding_dict(), _intel_dict(), _assessment_dict())
         assert "No mitigations documented" in result["report_markdown"]
 
+    def test_pdf_format_produces_valid_pdf(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        result = report_generate(
+            _finding_dict(), _intel_dict(), _assessment_dict(), formats=["pdf"]
+        )
+        assert "report_pdf_path" in result
+        pdf_path = tmp_path / (list(tmp_path.glob("*.pdf"))[0].name)
+        assert pdf_path.exists()
+        assert pdf_path.read_bytes()[:4] == b"%PDF"
+        # Markdown and JSON not generated when not requested
+        assert "report_markdown" not in result
+        assert len(list(tmp_path.glob("*.md"))) == 0
+
+    def test_all_formats_produces_three_files(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        result = report_generate(
+            _finding_dict(),
+            _intel_dict(),
+            _assessment_dict(),
+            formats=["markdown", "json", "pdf"],
+        )
+        assert len(result["saved_to"]) == 3
+        assert "report_markdown" in result
+        assert "report_json" in result
+        assert "report_pdf_path" in result
+        assert any(p.endswith(".pdf") for p in result["saved_to"])
+
 
 class TestPolicyGet:
     def test_returns_policy_version(self):
