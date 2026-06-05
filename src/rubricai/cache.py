@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "rubricai"
 
 
