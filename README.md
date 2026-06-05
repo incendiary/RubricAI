@@ -72,7 +72,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.6.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.7.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -476,10 +476,10 @@ pre-commit run --all-files
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 | [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
 | [#35](https://github.com/incendiary/RubricAI/issues/35) | ✅ Done | Priority Score — RubricAI-native 0–10 score for within-lane prioritisation |
-| [#37](https://github.com/incendiary/RubricAI/issues/37) | ⬜ Planned | Signal transparency — show how CVSS/EPSS/KEV were applied in scorecard (v0.6.1) |
-| [#38](https://github.com/incendiary/RubricAI/issues/38) | ⬜ Planned | Intel-first interview — derive technical fields from CVE data (v0.7.0) |
-| [#39](https://github.com/incendiary/RubricAI/issues/39) | ⬜ Planned | BOM tracking — store installed components, daily CVE check via `bom_check` (v0.7.0) |
-| [#40](https://github.com/incendiary/RubricAI/issues/40) | ⬜ Planned | PDF export — single-page landscape report card (v0.7.0) |
+| [#37](https://github.com/incendiary/RubricAI/issues/37) | ✅ Done | Signal transparency — Signal Analysis table showing how CVSS/EPSS/KEV were applied (v0.6.1) |
+| [#38](https://github.com/incendiary/RubricAI/issues/38) | ✅ Done | Intel-first interview — derive technical fields from CVE data, ask engineers only what they know (v0.7.0) |
+| [#39](https://github.com/incendiary/RubricAI/issues/39) | ✅ Done | BOM tracking — `bom_update` / `bom_check` MCP tools for daily CVE monitoring (v0.7.0) |
+| [#40](https://github.com/incendiary/RubricAI/issues/40) | ✅ Done | PDF export — single-page A4 landscape report card via `formats=["pdf"]` (v0.7.0) |
 
 ---
 
