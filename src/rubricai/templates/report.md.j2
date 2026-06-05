@@ -68,25 +68,40 @@
 
 ---
 
-## Score Breakdown
+## Signal Analysis
 
-{% if assessment.score_breakdown %}
-- **Reachability:** {{ assessment.score_breakdown.reachability }}
-- **Attacker utility:** {{ assessment.score_breakdown.utility }}
-- **Mitigation effect:** {{ assessment.score_breakdown.mitigation_effect }}
-{% if assessment.score_breakdown.intel_escalation %}
-- **Intel escalation signals:** {{ assessment.score_breakdown.intel_escalation | join(", ") }}
+How each signal was tested and what effect it had on the lane decision and priority score.
+
+| Signal | Value | Threshold | Applied | Effect |
+|--------|-------|-----------|---------|--------|
+{% if intel.cvss %}
+| CVSS base | {{ intel.cvss.base }} (v{{ intel.cvss.version }}) | Input to priority score (×0.4) | ✅ | +{{ "%.2f"|format(assessment.priority_score_breakdown.cvss if assessment.priority_score_breakdown else 0) }} pts |
 {% else %}
-- **Intel escalation signals:** none
+| CVSS base | No data | Input to priority score (×0.4) | ❌ | No CVSS contribution |
 {% endif %}
+{% if intel.kev %}
+| CISA KEV | {% if intel.kev.listed %}**Listed** (due {{ intel.kev.due_date or "N/A" }}){% else %}Not listed{% endif %} | KEV + internet + high utility → Critical | {% if "kev_listed" in assessment.score_breakdown.intel_escalation %}✅{% else %}❌{% endif %} | {% if "kev_listed" in assessment.score_breakdown.intel_escalation %}Escalates to Critical (+1.5 pts){% else %}No Critical escalation{% endif %} |
+{% else %}
+| CISA KEV | No data | KEV + internet + high utility → Critical | ❌ | No KEV data |
 {% endif %}
+{% if intel.epss %}
+| EPSS | {{ "%.4f"|format(intel.epss.score) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th pct) | ≥ 0.5 → High escalation (+1.0 pts); ≥ 0.1 → partial boost (+0.5 pts) | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}✅ high{% elif intel.epss.score >= 0.1 %}⚠️ mid{% else %}❌{% endif %} | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}High escalation signal (+1.0 pts){% elif intel.epss.score >= 0.1 %}Partial boost (+0.5 pts){% else %}Below threshold — no escalation{% endif %} |
+{% else %}
+| EPSS | No data | ≥ 0.5 → High escalation | ❌ | No EPSS data |
+{% endif %}
+| Reachability | {{ finding.reachability }} | internet → High eligible; constrained/internal → Medium path | {% if finding.reachability == "internet_exposed" %}✅{% else %}⚠️{% endif %} | {% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.reachability }} pts{% endif %} — {{ finding.reachability | replace("_", " ") }} |
+| Attacker utility | {{ assessment.score_breakdown.utility | upper if assessment.score_breakdown else "unknown" }} | High utility (RCE/auth_bypass/priv_esc/data_access) → lane escalation | {% if assessment.score_breakdown and assessment.score_breakdown.utility == "high" %}✅{% else %}❌{% endif %} | {% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.utility }} pts{% endif %}{% if assessment.score_breakdown and assessment.score_breakdown.utility == "high" %} — high-impact capability{% else %} — lower-impact utility{% endif %} |
+| Mitigations | {{ assessment.score_breakdown.mitigation_effect | upper if assessment.score_breakdown else "none" }} | Strong + causal_claim → priority penalty and lane cap | {% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %}✅{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %}⚠️{% else %}❌{% endif %} | {% if assessment.priority_score_breakdown and assessment.priority_score_breakdown.mitigation_penalty != 0 %}{{ assessment.priority_score_breakdown.mitigation_penalty }} pts{% else %}No penalty{% endif %}{% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %} — exploit path blocked{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %} — partially mitigated{% else %} — no verified mitigation{% endif %} |
+
 {% if assessment.priority_score_breakdown %}
-**Priority score breakdown:** CVSS={{ assessment.priority_score_breakdown.cvss }} + reachability={{ assessment.priority_score_breakdown.reachability }} + intel={{ assessment.priority_score_breakdown.intel }} + utility={{ assessment.priority_score_breakdown.utility }} - mitigation={{ assessment.priority_score_breakdown.mitigation_penalty | abs }} = **{{ assessment.priority_score_breakdown.total }}**
+**Priority score:** {{ assessment.priority_score_breakdown.cvss }} (CVSS) + {{ assessment.priority_score_breakdown.reachability }} (reach) + {{ assessment.priority_score_breakdown.intel }} (intel) + {{ assessment.priority_score_breakdown.utility }} (utility) {{ assessment.priority_score_breakdown.mitigation_penalty }} (mitigation) = **{{ assessment.priority_score_breakdown.total }} / 10**
 {% endif %}
 
 ---
 
-## Rationale
+## Verdict Rationale
+
+*Why the policy assigned this lane — each item can be checked by a human reviewer.*
 
 {% for line in assessment.rationale %}
 - {{ line }}
