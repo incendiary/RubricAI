@@ -14,7 +14,7 @@ def policy_get(policy_version: str | None = None) -> dict:
     """Return the CHML policy definition for auditability.
 
     Args:
-        policy_version: Version to retrieve. Currently only ``chml-v0.1`` exists.
+        policy_version: Version to retrieve. Currently only ``chml-v0.2`` exists.
 
     Returns:
         Policy definition as a serialisable dict.
@@ -36,8 +36,10 @@ def policy_get(policy_version: str | None = None) -> dict:
         "high_utility_types": sorted(HIGH_UTILITY_TYPES),
         "strong_mitigation_types": sorted(STRONG_MITIGATION_TYPES),
         "guardrails": [
-            "External intel (KEV, high EPSS, PoC) may escalate urgency but cannot "
-            "downgrade without strong evidence that the exploit path is blocked.",
+            "External intel (KEV, high EPSS) may escalate urgency but cannot "
+            "downgrade without strong evidence that the exploit path is blocked. "
+            "PoC availability is not used as a scoring signal; absence of public "
+            "PoC does not reduce lane assignment.",
             "Mitigations must be exploit-relevant. 'EDR exists' does not mitigate "
             "an IDOR vulnerability.",
             "Scoring is deterministic — lane decisions are made by server rules, "
