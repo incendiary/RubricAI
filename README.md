@@ -34,14 +34,14 @@ The AI client runs the interview (collecting finding context), then calls the MC
 | Lane | Trigger | Default target |
 |------|---------|----------------|
 | Critical | KEV listed + internet-exposed + high utility (RCE/auth bypass/priv-esc/data access) | 72 hours |
-| High | Internet-exposed + EPSS ≥ 0.5 or PoC available + high utility | 7 days |
-| Medium | Constrained/internal reachability, lower impact, or partial mitigations | Patch train |
+| High | Internet-exposed + high utility (RCE/auth bypass/priv-esc/data access); OR internet-exposed + EPSS ≥ 0.5 — no strong mitigations | 7 days |
+| Medium | Constrained/internal reachability, lower impact, or strong evidenced mitigations | Patch train |
 | Low | Local-only + low utility, or strong causal mitigations blocking the exploit path | Patch train |
 
 All four lane targets are configurable — see [Environment variables](#environment-variables).
 
 **Guardrails:**
-- External intel (KEV, high EPSS, PoC) can escalate urgency but cannot downgrade a finding.
+- External intel (KEV, high EPSS) can escalate urgency but cannot downgrade a finding. PoC availability is not used as a scoring signal — absence of public PoC does not reduce lane assignment.
 - Mitigations must be exploit-relevant to shift a lane — "EDR deployed" does not mitigate an IDOR.
 - Medium → Low requires a mitigation with a `causal_claim` of type `waf_rule`, `acl_segmentation`, `disable_feature`, `vendor_workaround`, or `virtual_patching`.
 
@@ -433,13 +433,14 @@ pre-commit run --all-files
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
-| `RUBRICAI_REPORT_DIR` | `./reports` | Directory for persisted report cards |
+| `RUBRICAI_REPORT_DIR` | `~/.local/share/rubricai/reports` | Directory for persisted report cards |
+| `RUBRICAI_ENV_DIR` | `~/.local/share/rubricai` | Directory for versioned environment state files |
+| `RUBRICAI_HTTP_TIMEOUT` | `30` | HTTP timeout (seconds) for CISA KEV, EPSS, and NVD fetches |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
 | `RUBRICAI_CRITICAL_DAYS` | `3` | Override Critical lane SLA (days, or `patch_train`) |
 | `RUBRICAI_HIGH_DAYS` | `7` | Override High lane SLA (days, or `patch_train`) |
 | `RUBRICAI_MEDIUM_DAYS` | `patch_train` | Override Medium lane SLA (days, or `patch_train`) |
 | `RUBRICAI_LOW_DAYS` | `patch_train` | Override Low lane SLA (days, or `patch_train`) |
-| `RUBRICAI_ENV_DIR` | `./environment` | Directory for versioned environment state files |
 
 ---
 
@@ -455,6 +456,7 @@ pre-commit run --all-files
 | [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 | [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
+| [#35](https://github.com/incendiary/RubricAI/issues/35) | 🔄 In progress | Numeric risk score — CVSS v3.1 Environmental Score (0–10) alongside CHML lane |
 
 ---
 

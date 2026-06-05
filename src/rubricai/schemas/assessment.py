@@ -29,3 +29,5 @@ class Assessment(BaseModel):
     rationale: list[str]
     actions: list[str] = Field(default_factory=list)
     evidence_gaps: list[str]
+    numeric_score: float | None = None
+    numeric_score_basis: Literal["cvss_v3_environmental", "cvss_v3_base"] | None = None
