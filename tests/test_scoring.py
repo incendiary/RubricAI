@@ -2,9 +2,11 @@
 
 from datetime import UTC, datetime
 
-from src.rubricai.scoring.priority import compute_priority_score
+import pytest
+
 from src.rubricai.schemas.finding import Finding
 from src.rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult, KevInfo
+from src.rubricai.scoring.priority import compute_priority_score
 
 
 def _make_intel(
@@ -261,3 +263,145 @@ class TestPriorityScoreInAssessment:
                 "total",
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# Calibration table — pins the README scenario table against the formula.
+# If the scoring formula changes, these tests will catch regressions and
+# prompt a README update. Tolerance is ±0.15 to absorb floating-point rounding
+# while still catching any meaningful formula change.
+# ---------------------------------------------------------------------------
+
+_TOLERANCE = 0.15
+
+_CALIBRATION_SCENARIOS = [
+    # (id, reachability, utility, cvss_base, kev, epss, mitigation, expected_score)
+    # Critical lane scenarios
+    (
+        "kev_internet_high_epss_rce",
+        "internet_exposed",
+        ["rce"],
+        9.8,
+        True,
+        0.9,
+        None,
+        9.4,
+    ),
+    (
+        "kev_internet_low_epss_auth_bypass",
+        "internet_exposed",
+        ["auth_bypass"],
+        7.5,
+        True,
+        0.2,
+        None,
+        8.0,
+    ),
+    # High lane scenarios
+    ("internet_rce_epss_0_6", "internet_exposed", ["rce"], 8.8, False, 0.6, None, 7.5),
+    ("internet_rce_no_intel", "internet_exposed", ["rce"], 8.8, False, 0.05, None, 6.5),
+    (
+        "internet_rce_partial_mit",
+        "internet_exposed",
+        ["rce"],
+        8.8,
+        False,
+        0.1,
+        "partial",
+        6.5,
+    ),
+    # Medium lane scenarios
+    ("internal_rce_no_mit", "internal", ["rce"], 8.8, False, 0.05, None, 4.5),
+    ("internal_rce_strong_mit", "internal", ["rce"], 8.8, False, 0.04, "strong", 3.0),
+    (
+        "constrained_dos_no_intel",
+        "constrained_external",
+        ["dos"],
+        5.0,
+        False,
+        0.05,
+        None,
+        3.5,
+    ),
+    # Low lane scenario
+    ("local_dos", "local_only", ["dos"], 5.0, False, 0.05, None, 2.0),
+    # No CVSS data
+    (
+        "no_cvss_internet_kev_rce",
+        "internet_exposed",
+        ["rce"],
+        None,
+        True,
+        None,
+        None,
+        4.5,
+    ),
+]
+
+
+def _make_calibration_finding(reachability, utility, mitigation):
+    mitigations = []
+    if mitigation == "strong":
+        mitigations = [
+            {
+                "type": "acl_segmentation",
+                "description": "ACL blocks exploit path",
+                "causal_claim": "Restricts all access to vulnerable component",
+                "evidence": ["ACL-001"],
+            }
+        ]
+    elif mitigation == "partial":
+        mitigations = [{"type": "waf_rule", "description": "WAF rule in place"}]
+    return Finding.model_validate(
+        {
+            "id": "CAL-001",
+            "cve_or_id": "CVE-2024-9999",
+            "component": {"name": "TestLib", "version": "1.0"},
+            "entry_point": {"description": "TCP/443"},
+            "reachability": reachability,
+            "attacker_utility": utility,
+            "mitigations": mitigations,
+        }
+    )
+
+
+def _make_calibration_intel(cvss_base, kev, epss):
+    return IntelResult(
+        cve_or_id="CVE-2024-9999",
+        retrieved_at=datetime.now(tz=UTC),
+        sources=["NVD"],
+        cvss=CvssInfo(base=cvss_base, version="3.1") if cvss_base is not None else None,
+        kev=KevInfo(listed=True) if kev else None,
+        epss=EpssInfo(score=epss, percentile=0.5) if epss is not None else None,
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "scenario_id",
+        "reachability",
+        "utility",
+        "cvss_base",
+        "kev",
+        "epss",
+        "mitigation",
+        "expected",
+    ),
+    _CALIBRATION_SCENARIOS,
+    ids=[s[0] for s in _CALIBRATION_SCENARIOS],
+)
+def test_priority_score_calibration(
+    scenario_id, reachability, utility, cvss_base, kev, epss, mitigation, expected
+):
+    """Pin the README scenario table against the formula.
+
+    If any of these fail after a formula change, update both the formula,
+    this test, and the README scenario table together.
+    """
+    finding = _make_calibration_finding(reachability, utility, mitigation)
+    intel = _make_calibration_intel(cvss_base, kev, epss)
+    score, _ = compute_priority_score(finding, intel)
+    assert abs(score - expected) <= _TOLERANCE, (
+        f"Scenario '{scenario_id}': expected {expected} ± {_TOLERANCE}, got {score}. "
+        "If the formula changed intentionally, update this test and the README table."
+    )

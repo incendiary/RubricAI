@@ -10,7 +10,7 @@ SLA; the Priority Score tells you which to patch first.
 Formula:
     priority_score = clamp(
         cvss_base * 0.4           # 0–4.0  (intrinsic severity input)
-      + reachability_points        # internet=2.5, constrained=1.5, internal=0.5, local=0
+      + reachability_points        # 2.5 / 1.5 / 0.5 / 0.0
       + intel_points               # kev=1.5; epss>=0.5=+1.0, epss>=0.1=+0.5 (additive)
       + utility_bonus              # high_utility=+0.5
       - mitigation_penalty         # strong=1.5, partial=0.5, none=0
