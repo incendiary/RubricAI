@@ -58,7 +58,8 @@ def report_generate(
         finding: Finding object (engineer-provided context).
         intel: IntelResult object (output of intel_lookup).
         assessment: Assessment object (output of score_evaluate).
-        formats: Output formats to produce. Options: markdown, json. Defaults to both.
+        formats: Options: markdown, json, pdf. Defaults to markdown + json.
+                 Add "pdf" to also generate a single-page landscape PDF card.
         evidence: Optional list of evidence items. Each item should have:
                   claim (str), type (str), content (str|null),
                   analyst_note (str|null), verified (bool).
