@@ -82,12 +82,8 @@ class TestPriorityScoreIntelSignals:
         assert score_kev > score_no_kev
 
     def test_high_epss_raises_score(self):
-        score_high, _ = compute_priority_score(
-            _make_finding(), _make_intel(epss=0.75)
-        )
-        score_low, _ = compute_priority_score(
-            _make_finding(), _make_intel(epss=0.05)
-        )
+        score_high, _ = compute_priority_score(_make_finding(), _make_intel(epss=0.75))
+        score_low, _ = compute_priority_score(_make_finding(), _make_intel(epss=0.05))
         assert score_high > score_low
 
     def test_kev_and_epss_are_additive(self):
@@ -135,7 +131,9 @@ class TestPriorityScoreMitigations:
     def test_partial_mitigation_smaller_penalty(self):
         _, bd_partial = compute_priority_score(
             _make_finding(
-                mitigations=[{"type": "waf_rule", "description": "partial — no causal claim"}]
+                mitigations=[
+                    {"type": "waf_rule", "description": "partial — no causal claim"}
+                ]
             ),
             _make_intel(),
         )
@@ -252,4 +250,14 @@ class TestPriorityScoreInAssessment:
         result = score_evaluate(finding, intel)
         bd = result["priority_score_breakdown"]
         assert bd is not None
-        assert all(k in bd for k in ("cvss", "reachability", "intel", "utility", "mitigation_penalty", "total"))
+        assert all(
+            k in bd
+            for k in (
+                "cvss",
+                "reachability",
+                "intel",
+                "utility",
+                "mitigation_penalty",
+                "total",
+            )
+        )

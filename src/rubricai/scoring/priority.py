@@ -26,7 +26,13 @@ from ..schemas.intel import IntelResult
 # (scoring module must not depend on policy module)
 _HIGH_UTILITY_TYPES = frozenset({"rce", "auth_bypass", "priv_esc", "data_access"})
 _STRONG_MITIGATION_TYPES = frozenset(
-    {"waf_rule", "acl_segmentation", "disable_feature", "vendor_workaround", "virtual_patching"}
+    {
+        "waf_rule",
+        "acl_segmentation",
+        "disable_feature",
+        "vendor_workaround",
+        "virtual_patching",
+    }
 )
 _EPSS_HIGH_THRESHOLD = 0.5
 _EPSS_MID_THRESHOLD = 0.1
@@ -37,6 +43,7 @@ _REACHABILITY_POINTS: dict[str, float] = {
     "internal": 0.5,
     "local_only": 0.0,
 }
+
 
 def compute_priority_score(
     finding: Finding,
