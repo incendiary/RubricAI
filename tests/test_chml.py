@@ -88,7 +88,8 @@ class TestLaneHigh:
         assert result.lane == "high"
 
     def test_epss_high_internet_low_utility(self):
-        # v0.2: high EPSS on internet-exposed path escalates to High regardless of utility.
+        # v0.2: high EPSS on internet-exposed path escalates to High
+        # regardless of utility type.
         result = evaluate(
             _make_finding(reachability="internet_exposed", utility=["dos"]),
             _make_intel(kev_listed=False, epss_score=0.75),
