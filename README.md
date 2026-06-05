@@ -476,6 +476,10 @@ pre-commit run --all-files
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
 | [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
 | [#35](https://github.com/incendiary/RubricAI/issues/35) | ✅ Done | Priority Score — RubricAI-native 0–10 score for within-lane prioritisation |
+| [#37](https://github.com/incendiary/RubricAI/issues/37) | ⬜ Planned | Signal transparency — show how CVSS/EPSS/KEV were applied in scorecard (v0.6.1) |
+| [#38](https://github.com/incendiary/RubricAI/issues/38) | ⬜ Planned | Intel-first interview — derive technical fields from CVE data (v0.7.0) |
+| [#39](https://github.com/incendiary/RubricAI/issues/39) | ⬜ Planned | BOM tracking — store installed components, daily CVE check via `bom_check` (v0.7.0) |
+| [#40](https://github.com/incendiary/RubricAI/issues/40) | ⬜ Planned | PDF export — single-page landscape report card (v0.7.0) |
 
 ---
 
