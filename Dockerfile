@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -e .
 # SSE transport for remote/Docker deployment
 ENV RUBRICAI_TRANSPORT=sse
 ENV RUBRICAI_REPORT_DIR=/reports
+ENV RUBRICAI_ENV_DIR=/state
 
 EXPOSE 8000
 

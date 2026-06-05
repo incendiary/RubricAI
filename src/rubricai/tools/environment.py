@@ -9,7 +9,7 @@ from typing import Any
 
 from ..schemas.environment import EnvironmentState
 
-_DEFAULT_ENV_DIR = Path("./environment")
+_DEFAULT_ENV_DIR = Path.home() / ".local" / "share" / "rubricai"
 
 
 def _env_dir() -> Path:
