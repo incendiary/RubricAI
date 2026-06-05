@@ -1,5 +1,7 @@
 """FIRST EPSS score fetcher."""
 
+import os
+
 import httpx
 
 from ..cache import FileCache
@@ -7,6 +9,7 @@ from ..cache import FileCache
 _API_URL = "https://api.first.org/data/v1/epss"
 _NS = "epss"
 _TTL_HOURS = 24
+_HTTP_TIMEOUT = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
 
 _cache = FileCache()
 
@@ -17,7 +20,7 @@ async def fetch(cve_id: str) -> dict | None:
     if cached is not None:
         return cached
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         resp = await client.get(_API_URL, params={"cve": cve_id})
         resp.raise_for_status()
         data = resp.json()
