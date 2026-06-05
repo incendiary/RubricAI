@@ -202,63 +202,128 @@ Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUB
 
 ---
 
-## Example interview
+## Example sessions
 
-The following is a condensed example of what a RubricAI session looks like in Claude Desktop. The engineer answers questions; Claude calls the MCP tools and returns the verdict.
-
----
-
-**Engineer:** I need to assess CVE-2024-21887 — it's a command injection in Ivanti Connect Secure.
-
-**Claude:** I can see your environment includes: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Is this still current?
-
-**Engineer:** Yes, still current. The affected component is Ivanti Connect Secure v22.3, it's our VPN gateway — internet-facing.
-
-**Claude:** Got it. What's the exploit entry point?
-
-**Engineer:** It's an authenticated HTTP request to the web management interface, port 443.
-
-**Claude:** What can an attacker achieve? (RCE, auth bypass, privilege escalation, data access, etc.)
-
-**Engineer:** Remote code execution. An attacker with any valid user credentials can run OS commands as root.
-
-**Claude:** Is there authentication required to reach the vulnerable function?
-
-**Engineer:** Yes, but only low-privilege user credentials — easily obtained or brute-forced.
-
-**Claude:** Any mitigations in place? WAF rules, ACL, vendor workaround?
-
-**Engineer:** We pushed Ivanti's XML mitigation workaround on the 3rd. I can paste the change ticket.
-
-**Claude:** Please do — I'll record it as evidence.
-
-**Engineer:** *[pastes INC-20240103-0042: applied mitigation per Ivanti KB44093, verified by change manager]*
-
-**Claude:** *(calling `intel_lookup`, `score_evaluate`, `report_generate`)*
+Two common workflows are shown below. Both use the same Claude Desktop setup — the difference is what you ask.
 
 ---
 
-**Verdict: 🔴 CRITICAL — Remediate within 72 hours**
+### Scenario 1 — Triage a specific CVE
 
-| Signal | Value |
-|--------|-------|
-| KEV listed | ✅ Yes — due 2024-01-31 |
-| EPSS | 0.94 (99th percentile) |
-| Reachability | Internet-exposed |
-| Utility | RCE as root |
-| Mitigation | Vendor workaround applied (unverified) |
+An engineer receives a scanner alert and needs a priority decision before the next patch window.
 
-**Rationale:** KEV-listed + internet-exposed + RCE = Critical under CHML policy. The vendor workaround does not shift the lane because it has not been independently verified and Ivanti has noted bypasses exist.
+---
+
+**Engineer:** I need to assess CVE-2024-21887 — it's showing up in my scanner for Ivanti Connect Secure v22.3. Our VPN gateway.
+
+**Claude:** *(calls `env_read` — sees existing environment context)* I have your environment on record: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Still current?
+
+**Engineer:** Yes.
+
+**Claude:** *(calls `intel_lookup` immediately)*
+
+Got the CVE data. Here's what the public record says:
+
+> **CVE-2024-21887** — A command injection vulnerability in the web component of Ivanti Connect Secure allows an authenticated administrator to send specially crafted requests and execute arbitrary commands on the appliance.
+>
+> - **What an attacker can achieve:** Remote code execution (from CVE description)
+> - **How the exploit is triggered:** Network-accessible (CVSS AV:N)
+> - **Privileges required:** High (CVSS PR:H — administrator credentials)
+> - **CVSS base:** 9.1 · **EPSS:** 0.94 (99th percentile) · **KEV listed:** Yes (due 2024-01-31)
+
+Does this match your understanding of the vulnerability?
+
+**Engineer:** Yes, that's right. Admin credentials, web interface on port 443.
+
+**Claude:** Two environment questions:
+
+1. Is the Ivanti management interface reachable from the internet, or only internally?
+2. Any compensating controls in place? (ACL, vendor workaround, patching)
+
+**Engineer:** It's internet-facing — port 443 is open externally. We pushed Ivanti's XML mitigation workaround on the 3rd. Here's the change ticket: *[pastes INC-20240103-0042: applied mitigation per Ivanti KB44093, verified by change manager]*
+
+**Claude:** *(calls `score_evaluate`, `report_generate`)*
+
+---
+
+**🔴 CRITICAL — Remediate within 72 hours**
+
+| Signal | Value | Applied | Effect |
+|--------|-------|---------|--------|
+| CVSS base | 9.1 (v3.1) | ✅ | +3.64 to priority score |
+| CISA KEV | **Listed** (due 2024-01-31) | ✅ | Critical escalation +1.5 pts |
+| EPSS | 0.9400 (99th pct) | ✅ high | +1.0 pts |
+| Reachability | internet\_exposed | ✅ | +2.5 pts |
+| Utility | HIGH (rce) | ✅ | +0.5 pts |
+| Mitigation | partial (workaround, unverified) | ⚠️ | −0.5 pts |
+
+**Priority score: 9.2 / 10**
+
+**Verdict rationale:**
+- CVE is on CISA KEV with an internet-exposed exploit path and high attacker utility.
+
+**Required actions:**
+- → Remediate within 72 hours or apply immediate compensating controls.
+- → Strengthen mitigations with causal claims or escalate to patching.
 
 **Evidence gaps:**
-- [ ] Vendor workaround verification: confirm the mitigation is active and covers your specific build
-- [ ] Confirm no authentication bypass for the management interface exists on your build
+- [ ] Vendor workaround: confirm KB44093 is active and covers your specific build (Ivanti has noted bypasses exist on some versions)
 
-**Report saved to:** `reports/FIND-ICS-001_20240104T103000.md`
+**Reports saved to:** `reports/FIND-ICS-001_20240104T103000.md` and `.json`
+
+*(If PDF requested: `.pdf` report card also saved — suitable for security team review)*
 
 ---
 
-The JSON report, markdown card, and all evidence are written to disk for submission to your central security review queue.
+### Scenario 2 — BOM ingestion and daily CVE check
+
+An engineer wants to monitor their entire stack for new vulnerabilities, not just respond to individual alerts.
+
+---
+
+**Engineer:** I want to register our software stack so we can check for new CVEs.
+
+**Claude:** *(calls `env_read`)* No BOM on record yet. Paste your component list — name, version, and type if you know it.
+
+**Engineer:**
+```
+nginx 1.24.0 (reverse proxy)
+PostgreSQL 15.2 (database)
+OpenSSL 3.1.4 (library)
+Django 4.2.7 (web framework)
+Redis 7.0.11 (cache)
+```
+
+**Claude:** *(calls `bom_update`)* Stored 5 components. BOM saved to your environment state — it'll be available in every future session.
+
+---
+
+*Next morning:*
+
+**Engineer:** Any new CVEs for our stack this week?
+
+**Claude:** *(calls `bom_check(days_back=7)`)* Checked all 5 components against NVD. Here's what's new:
+
+**nginx 1.24.0** — 1 CVE found
+- `CVE-2024-7347` — CVSS 4.7 (Medium) — nginx HTTP/3 QUIC module: specially crafted QUIC packets may cause worker process crash. *Published 2024-08-14.*
+
+**OpenSSL 3.1.4** — 2 CVEs found
+- `CVE-2024-5535` — CVSS 9.1 (Critical) — SSL_select_next_proto buffer overread, potential remote code execution. *Published 2024-06-27.*
+- `CVE-2024-4603` — CVSS 5.3 (Medium) — Excessive time checking DSA keys. *Published 2024-05-16.*
+
+**PostgreSQL 15.2, Django 4.2.7, Redis 7.0.11** — no new CVEs this week.
+
+---
+
+CVE-2024-5535 (OpenSSL, CVSS 9.1) looks urgent. Want me to start a full triage for that one now? I already have OpenSSL 3.1.4 pre-filled from your BOM.
+
+**Engineer:** Yes, let's triage it.
+
+**Claude:** *(calls `intel_lookup("CVE-2024-5535")` — pre-fills component from BOM, presents derived context for confirmation, then asks only reachability and mitigation questions)*
+
+---
+
+The JSON report, markdown card, and optional PDF are written to disk for submission to your central security review queue.
 
 ---
 
