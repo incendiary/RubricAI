@@ -8,6 +8,7 @@ from ..fetchers import epss as epss_fetcher
 from ..fetchers import kev as kev_fetcher
 from ..fetchers import nvd as nvd_fetcher
 from ..fetchers import poc as poc_fetcher
+from ..intel_derive import derive_finding_context
 from ..schemas.intel import (
     CvssInfo,
     EpssInfo,
@@ -36,7 +37,15 @@ async def lookup(cves: list[str], include: list[str] | None = None) -> dict[str,
         *[_lookup_one(cve, sources) for cve in cves],
         return_exceptions=False,
     )
-    return {"results": [r.model_dump(mode="json") for r in results]}
+    return {
+        "results": [
+            {
+                **r.model_dump(mode="json"),
+                "derived_finding_context": derive_finding_context(r),
+            }
+            for r in results
+        ]
+    }
 
 
 async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
@@ -86,10 +95,23 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     if nvd_record:
         active_sources.append("NVD")
 
+    # Extract English CVE description from NVD record
+    description: str | None = None
+    if nvd_record:
+        description = next(
+            (
+                d["value"]
+                for d in nvd_record.get("descriptions", [])
+                if d.get("lang") == "en"
+            ),
+            None,
+        )
+
     return IntelResult(
         cve_or_id=cve_id,
         retrieved_at=datetime.now(tz=UTC),
         sources=active_sources or ["none"],
+        description=description,
         kev=KevInfo.model_validate(kev_raw) if kev_raw else None,
         epss=EpssInfo.model_validate(epss_raw) if epss_raw else None,
         cvss=cvss,

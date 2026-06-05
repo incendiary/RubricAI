@@ -50,6 +50,7 @@ class IntelResult(BaseModel):
     cve_or_id: str
     retrieved_at: datetime
     sources: list[str]
+    description: str | None = None  # English CVE description from NVD
     kev: KevInfo | None = None
     epss: EpssInfo | None = None
     cvss: CvssInfo | None = None

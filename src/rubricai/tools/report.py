@@ -71,7 +71,9 @@ def report_generate(
     requested = set(formats or ["markdown", "json"])
 
     f = Finding.model_validate(finding)
-    i = IntelResult.model_validate(intel)
+    # Strip AI-use fields not in IntelResult schema (e.g. derived_finding_context)
+    intel_clean = {k: v for k, v in intel.items() if k != "derived_finding_context"}
+    i = IntelResult.model_validate(intel_clean)
     a = Assessment.model_validate(assessment)
     ev = [EvidenceItem.model_validate(e) for e in (evidence or [])]
 
