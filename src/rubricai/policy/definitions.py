@@ -1,6 +1,6 @@
 import os
 
-POLICY_VERSION = "chml-v0.1"
+POLICY_VERSION = "chml-v0.2"
 
 # Utility types considered "high impact" for lane escalation
 HIGH_UTILITY_TYPES: frozenset[str] = frozenset(
@@ -32,7 +32,7 @@ LANE_TARGETS: dict[str, int | None] = {
 
 LANE_BASES: dict[str, str] = {
     "critical": "kev_listed + internet_exposed + high_utility",
-    "high": "internet_exposed + high_epss_or_poc + high_utility",
+    "high": "internet_exposed + high_utility_or_epss",
     "medium": "constrained_or_internal_reachability_or_lower_impact",
     "low": "low_utility_and_reachability_or_strong_mitigations",
 }

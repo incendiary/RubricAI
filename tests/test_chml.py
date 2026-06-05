@@ -78,10 +78,21 @@ class TestLaneHigh:
         assert result.lane == "high"
         assert result.target.days == 7
 
-    def test_poc_internet_high_utility(self):
+    def test_internet_exposed_high_utility_no_intel_signals(self):
+        # v0.2: internet-exposed + high utility alone is sufficient for High,
+        # no EPSS or PoC signal required.
         result = evaluate(
             _make_finding(reachability="internet_exposed", utility=["data_access"]),
-            _make_intel(kev_listed=False, poc_available=True),
+            _make_intel(kev_listed=False, epss_score=0.1, poc_available=False),
+        )
+        assert result.lane == "high"
+
+    def test_epss_high_internet_low_utility(self):
+        # v0.2: high EPSS on internet-exposed path escalates to High
+        # regardless of utility type.
+        result = evaluate(
+            _make_finding(reachability="internet_exposed", utility=["dos"]),
+            _make_intel(kev_listed=False, epss_score=0.75),
         )
         assert result.lane == "high"
 
@@ -158,11 +169,11 @@ class TestScoreBreakdown:
     def test_intel_escalation_populated(self):
         result = evaluate(
             _make_finding(),
-            _make_intel(kev_listed=True, epss_score=0.8, poc_available=True),
+            _make_intel(kev_listed=True, epss_score=0.8),
         )
         assert "kev_listed" in result.score_breakdown.intel_escalation
         assert "epss_high" in result.score_breakdown.intel_escalation
-        assert "poc_present" in result.score_breakdown.intel_escalation
+        assert "poc_present" not in result.score_breakdown.intel_escalation
 
     def test_no_intel_escalation_when_clean(self):
         result = evaluate(_make_finding(), _make_intel())

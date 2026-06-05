@@ -34,15 +34,12 @@ def evaluate(
 
     kev_listed = intel.kev is not None and intel.kev.listed
     epss_high = intel.epss is not None and intel.epss.score >= EPSS_HIGH_THRESHOLD
-    poc_available = intel.poc is not None and intel.poc.available
 
     intel_escalation: list[str] = []
     if kev_listed:
         intel_escalation.append("kev_listed")
     if epss_high:
         intel_escalation.append("epss_high")
-    if poc_available:
-        intel_escalation.append("poc_present")
 
     rationale: list[str] = []
     actions: list[str] = []
@@ -59,16 +56,18 @@ def evaluate(
     elif (
         not kev_listed
         and finding.reachability == "internet_exposed"
-        and (epss_high or poc_available)
-        and high_utility
+        and (high_utility or epss_high)
+        and mit_effect != "strong"
     ):
         lane = "high"
-        rationale.append(
-            "Internet-exposed with high exploitation likelihood signals (EPSS/PoC) and high attacker utility."
-        )
-        rationale.append(
-            "Not on CISA KEV; external intel signals indicate high exploitation probability."
-        )
+        if high_utility:
+            rationale.append(
+                "Internet-exposed with high attacker utility (RCE / auth bypass / priv-esc / data access)."
+            )
+        if epss_high:
+            rationale.append(
+                "High EPSS score indicates elevated exploitation probability in the wild."
+            )
 
     elif finding.reachability == "local_only" and not high_utility:
         # local_only + low utility is the clearest Low case; check before medium
