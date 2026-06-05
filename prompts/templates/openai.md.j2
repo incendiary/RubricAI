@@ -1,0 +1,94 @@
+{{ workflow }}
+
+---
+
+## OpenAI Configuration
+
+RubricAI can be used with OpenAI models (GPT-4o, GPT-4o-mini, o1, o3) via the
+[OpenAI Agents SDK](https://openai.github.io/openai-agents-python/) or the
+[Responses API](https://platform.openai.com/docs/guides/responses) with tool-calling.
+
+### Option A — OpenAI Agents SDK (recommended)
+
+```python
+from agents import Agent, MCPServerStdio
+
+rubricai = MCPServerStdio(
+    name="rubricai",
+    params={
+        "command": "/path/to/RubricAI/.venv/bin/rubricai",
+        "env": {
+            "RUBRICAI_TRANSPORT": "stdio",
+            "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports",
+        },
+    },
+)
+
+agent = Agent(
+    name="RubricAI",
+    instructions=open("prompts/out/openai_system_prompt.md").read(),
+    mcp_servers=[rubricai],
+    model="gpt-4o",
+)
+
+# Run a triage session
+import asyncio
+from agents import Runner
+
+result = asyncio.run(Runner.run(agent, "I need to assess CVE-2024-21887"))
+print(result.final_output)
+```
+
+### Option B — Responses API with MCP tools
+
+```python
+from openai import OpenAI
+
+client = OpenAI()
+
+response = client.responses.create(
+    model="gpt-4o",
+    instructions=open("prompts/out/openai_system_prompt.md").read(),
+    tools=[{
+        "type": "mcp",
+        "server_label": "rubricai",
+        "server_url": "http://localhost:8000/mcp",  # SSE transport
+        "require_approval": "never",
+    }],
+    input="I need to assess CVE-2024-21887",
+)
+print(response.output_text)
+```
+
+For the Responses API with remote MCP, start the server with SSE transport:
+
+```bash
+RUBRICAI_TRANSPORT=sse python -m src.main
+# Server listens on http://localhost:8000
+```
+
+### Option C — Function calling (no MCP)
+
+Export the tool schemas and call the Python functions directly:
+
+```python
+from src.rubricai.tools.intel import lookup
+from src.rubricai.tools.scoring import score_evaluate
+from src.rubricai.tools.report import report_generate
+from src.rubricai.tools.environment import env_list, env_read, env_write
+
+# These are plain async/sync Python functions — call them from your own
+# tool-calling loop using the OpenAI Responses or Chat Completions API.
+```
+
+### Notes for OpenAI models
+
+- **Tool call order matters.** `env_list` → `env_read` must precede any triage.
+  GPT-4o and o3 follow the system prompt tool call sequence reliably.
+- **`o1` / `o3` (reasoning models):** these models do not support streaming tool calls.
+  Use the Responses API with `stream=False`.
+- **Context length:** full triage sessions including the system prompt fit comfortably
+  within GPT-4o's 128k context. For batch processing many CVEs, prefer o3-mini.
+- **Paste the system prompt** into your assistant's instructions or the first system
+  message. Do not truncate it — the workflow, rules, and tool call sequence are all
+  load-bearing.

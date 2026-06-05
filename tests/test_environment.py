@@ -6,54 +6,101 @@ import pytest
 from pydantic import ValidationError
 
 from src.rubricai.schemas.evidence import EvidenceItem
-from src.rubricai.tools.environment import env_read, env_write
+from src.rubricai.tools.environment import (
+    env_list,
+    env_migrate_legacy,
+    env_read,
+    env_write,
+)
 from src.rubricai.tools.report import report_generate
 
+_ENV = "test-env"  # canonical name used in all env tests
+
+
+def _env_dir(tmp_path):
+    """Return the per-environment state directory for the test environment."""
+    return tmp_path / "environments" / _ENV
+
+
 # ---------------------------------------------------------------------------
-# env_read / env_write
+# env_list
+# ---------------------------------------------------------------------------
+
+
+def test_env_list_empty(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    result = env_list()
+    assert result["environments"] == []
+    assert result["count"] == 0
+    assert result["needs_migration"] is False
+
+
+def test_env_list_after_write(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    env_write({"context_notes": "prod"}, "production")
+    env_write({"context_notes": "staging"}, "staging")
+    result = env_list()
+    assert set(result["environments"]) == {"production", "staging"}
+    assert result["count"] == 2
+
+
+def test_env_list_detects_legacy_files(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    # Write a legacy flat state file at root
+    (tmp_path / "state_v001.json").write_text('{"version": 1}')
+    result = env_list()
+    assert result["needs_migration"] is True
+    assert result["legacy_files"] == 1
+
+
+# ---------------------------------------------------------------------------
+# env_read / env_write (named environment)
 # ---------------------------------------------------------------------------
 
 
 def test_env_read_returns_empty_template_when_no_files(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    state = env_read()
+    state = env_read(_ENV)
     assert state["version"] == 1
     assert state["components"] == []
     assert state["session_log"] == []
+    assert state["environment_name"] == _ENV
 
 
 def test_env_write_creates_versioned_file(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    result = env_write({"context_notes": "test env"})
+    result = env_write({"context_notes": "test env"}, _ENV)
     assert result["version"] == 1
-    assert (tmp_path / "state_v001.json").exists()
-    assert (tmp_path / "state_latest.json").exists()
+    assert result["environment_name"] == _ENV
+    d = _env_dir(tmp_path)
+    assert (d / "state_v001.json").exists()
+    assert (d / "state_latest.json").exists()
 
 
 def test_env_write_increments_version(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    env_write({"context_notes": "v1"})
-    env_write({"context_notes": "v2"})
-    result = env_write({"context_notes": "v3"})
+    env_write({"context_notes": "v1"}, _ENV)
+    env_write({"context_notes": "v2"}, _ENV)
+    result = env_write({"context_notes": "v3"}, _ENV)
     assert result["version"] == 3
-    assert (tmp_path / "state_v001.json").exists()
-    assert (tmp_path / "state_v002.json").exists()
-    assert (tmp_path / "state_v003.json").exists()
+    d = _env_dir(tmp_path)
+    for ver in ("v001", "v002", "v003"):
+        assert (d / f"state_{ver}.json").exists()
 
 
 def test_env_write_never_overwrites(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    env_write({"context_notes": "original"})
-    v1_content = (tmp_path / "state_v001.json").read_text()
-    env_write({"context_notes": "second write"})
-    assert (tmp_path / "state_v001.json").read_text() == v1_content
+    env_write({"context_notes": "original"}, _ENV)
+    v1_content = (_env_dir(tmp_path) / "state_v001.json").read_text()
+    env_write({"context_notes": "second write"}, _ENV)
+    assert (_env_dir(tmp_path) / "state_v001.json").read_text() == v1_content
 
 
 def test_env_read_returns_latest_after_write(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    env_write({"context_notes": "first"})
-    env_write({"context_notes": "second"})
-    state = env_read()
+    env_write({"context_notes": "first"}, _ENV)
+    env_write({"context_notes": "second"}, _ENV)
+    state = env_read(_ENV)
     assert state["context_notes"] == "second"
     assert state["version"] == 2
 
@@ -61,8 +108,8 @@ def test_env_read_returns_latest_after_write(tmp_path, monkeypatch):
 def test_env_write_persists_components(tmp_path, monkeypatch):
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
     components = [{"name": "PaymentAPI", "version": "3.1", "environment": "production"}]
-    env_write({"components": components})
-    state = env_read()
+    env_write({"components": components}, _ENV)
+    state = env_read(_ENV)
     assert state["components"][0]["name"] == "PaymentAPI"
 
 
@@ -76,11 +123,47 @@ def test_env_write_appends_session_log(tmp_path, monkeypatch):
                     "summary": "Assessed CVE-2024-1234",
                 }
             ]
-        }
+        },
+        _ENV,
     )
-    state = env_read()
+    state = env_read(_ENV)
     assert len(state["session_log"]) == 1
     assert "CVE-2024-1234" in state["session_log"][0]["summary"]
+
+
+def test_multiple_environments_isolated(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    env_write({"context_notes": "prod notes"}, "production")
+    env_write({"context_notes": "staging notes"}, "staging")
+    prod = env_read("production")
+    stage = env_read("staging")
+    assert prod["context_notes"] == "prod notes"
+    assert stage["context_notes"] == "staging notes"
+
+
+# ---------------------------------------------------------------------------
+# env_migrate_legacy
+# ---------------------------------------------------------------------------
+
+
+def test_env_migrate_legacy(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    # Simulate legacy flat state at root
+    legacy_content = '{"schema_version": "1", "version": 1, "components": []}'
+    (tmp_path / "state_v001.json").write_text(legacy_content)
+    (tmp_path / "state_latest.json").write_text(legacy_content)
+
+    result = env_migrate_legacy("legacy-prod")
+    assert result["migrated"] >= 1
+    assert result["environment_name"] == "legacy-prod"
+
+    # Legacy files should now be in the environments directory
+    migrated_dir = tmp_path / "environments" / "legacy-prod"
+    assert (migrated_dir / "state_v001.json").exists()
+
+    # env_list should no longer flag migration needed
+    listing = env_list()
+    assert listing["needs_migration"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -229,8 +312,9 @@ def test_env_write_to_json_is_valid(tmp_path, monkeypatch):
             "standing_mitigations": [],
             "context_notes": "prod env",
             "session_log": [],
-        }
+        },
+        _ENV,
     )
-    raw = json.loads((tmp_path / "state_v001.json").read_text())
+    raw = json.loads((_env_dir(tmp_path) / "state_v001.json").read_text())
     assert raw["schema_version"] == "1"
     assert raw["version"] == 1
