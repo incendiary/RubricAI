@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from src.rubricai.tools.bom import bom_check, bom_update
 
-
 # ---------------------------------------------------------------------------
 # bom_update
 # ---------------------------------------------------------------------------
@@ -17,10 +16,12 @@ from src.rubricai.tools.bom import bom_check, bom_update
 class TestBomUpdate:
     def test_stores_components(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-        result = bom_update([
-            {"name": "nginx", "version": "1.24.0"},
-            {"name": "openssl", "version": "3.1.2"},
-        ])
+        result = bom_update(
+            [
+                {"name": "nginx", "version": "1.24.0"},
+                {"name": "openssl", "version": "3.1.2"},
+            ]
+        )
         assert result["stored"] == 2
         assert result["bom"][0]["name"] == "nginx"
         assert result["bom"][1]["name"] == "openssl"
@@ -39,13 +40,17 @@ class TestBomUpdate:
 
     def test_optional_fields_accepted(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-        result = bom_update([{
-            "name": "postgres",
-            "version": "15.2",
-            "type": "database",
-            "vendor": "PostgreSQL Global Development Group",
-            "notes": "Primary datastore",
-        }])
+        result = bom_update(
+            [
+                {
+                    "name": "postgres",
+                    "version": "15.2",
+                    "type": "database",
+                    "vendor": "PostgreSQL Global Development Group",
+                    "notes": "Primary datastore",
+                }
+            ]
+        )
         assert result["stored"] == 1
         entry = result["bom"][0]
         assert entry["vendor"] == "PostgreSQL Global Development Group"
@@ -86,9 +91,11 @@ class TestBomCheck:
     @pytest.mark.asyncio
     async def test_finds_cves_for_components(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-        bom_update([
-            {"name": "nginx", "version": "1.20.0"},
-        ])
+        bom_update(
+            [
+                {"name": "nginx", "version": "1.20.0"},
+            ]
+        )
         mock_cves = [
             {"id": "CVE-2024-0001", "description": "Buffer overflow", "cvss_base": 8.8},
         ]
@@ -138,6 +145,7 @@ class TestBomCheck:
 
         # After check, state_latest.json should contain updated last_checked timestamp
         import json
+
         state = json.loads((tmp_path / "state_latest.json").read_text())
         entry = state["bom"][0]
         assert entry["last_checked"] is not None
@@ -148,11 +156,13 @@ class TestBomCheck:
     @pytest.mark.asyncio
     async def test_multiple_components_queried(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-        bom_update([
-            {"name": "nginx", "version": "1.20.0"},
-            {"name": "redis", "version": "7.0.0"},
-            {"name": "postgres", "version": "15.0"},
-        ])
+        bom_update(
+            [
+                {"name": "nginx", "version": "1.20.0"},
+                {"name": "redis", "version": "7.0.0"},
+                {"name": "postgres", "version": "15.0"},
+            ]
+        )
         mock_search = AsyncMock(return_value=[])
         with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
             await bom_check()
