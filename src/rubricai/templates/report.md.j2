@@ -15,8 +15,8 @@
 | **Lane** | {{ assessment.lane | upper }} |
 | **Remediation target** | {% if assessment.target.days is not none %}{{ assessment.target.days }} day(s){% else %}Patch train{% endif %} |
 | **Basis** | {{ assessment.target.basis }} |
-{% if assessment.numeric_score is not none %}
-| **Numeric score** | {{ assessment.numeric_score }} / 10 ({{ assessment.numeric_score_basis | replace("_", " ") }}) |
+{% if assessment.priority_score is not none %}
+| **Priority score** | {{ assessment.priority_score }} / 10 |
 {% endif %}
 
 ---
@@ -79,6 +79,9 @@
 {% else %}
 - **Intel escalation signals:** none
 {% endif %}
+{% endif %}
+{% if assessment.priority_score_breakdown %}
+**Priority score breakdown:** CVSS={{ assessment.priority_score_breakdown.cvss }} + reachability={{ assessment.priority_score_breakdown.reachability }} + intel={{ assessment.priority_score_breakdown.intel }} + utility={{ assessment.priority_score_breakdown.utility }} - mitigation={{ assessment.priority_score_breakdown.mitigation_penalty | abs }} = **{{ assessment.priority_score_breakdown.total }}**
 {% endif %}
 
 ---

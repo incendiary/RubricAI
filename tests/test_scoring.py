@@ -1,160 +1,218 @@
-"""Tests for CVSS v3.1 Environmental Score computation."""
+"""Tests for the RubricAI Priority Score (RPS)."""
 
 from datetime import UTC, datetime
 
-import pytest
-
-from src.rubricai.scoring.environmental import compute_environmental_score
+from src.rubricai.scoring.priority import compute_priority_score
 from src.rubricai.schemas.finding import Finding
-from src.rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult
-
-_VECTOR_HIGH = "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H"  # base 8.8
-_VECTOR_MED = "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"  # base 5.3
+from src.rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult, KevInfo
 
 
-def _make_intel(vector: str | None = _VECTOR_HIGH, base: float = 8.8) -> IntelResult:
+def _make_intel(
+    cvss_base: float | None = 8.8,
+    epss: float = 0.05,
+    kev_listed: bool = False,
+) -> IntelResult:
     return IntelResult(
         cve_or_id="CVE-2024-9999",
         retrieved_at=datetime.now(tz=UTC),
         sources=["NVD"],
-        cvss=CvssInfo(base=base, version="3.1", vector=vector) if base else None,
-        epss=EpssInfo(score=0.1, percentile=0.5),
+        cvss=CvssInfo(base=cvss_base, version="3.1") if cvss_base else None,
+        epss=EpssInfo(score=epss, percentile=0.5),
+        kev=KevInfo(listed=True) if kev_listed else None,
     )
 
 
 def _make_finding(
     reachability: str = "internet_exposed",
     utility: list[str] | None = None,
-    data_impact_notes: str | None = None,
+    mitigations: list[dict] | None = None,
 ) -> Finding:
-    data = {
-        "id": "FIND-001",
-        "cve_or_id": "CVE-2024-9999",
-        "component": {"name": "TestLib", "version": "2.0"},
-        "entry_point": {"description": "TCP/5432"},
-        "reachability": reachability,
-        "attacker_utility": utility or ["rce"],
-    }
-    if data_impact_notes:
-        data["data_impact"] = {"notes": data_impact_notes}
-    return Finding.model_validate(data)
+    return Finding.model_validate(
+        {
+            "id": "FIND-001",
+            "cve_or_id": "CVE-2024-9999",
+            "component": {"name": "TestLib", "version": "2.0"},
+            "entry_point": {"description": "TCP/443"},
+            "reachability": reachability,
+            "attacker_utility": utility or ["rce"],
+            "mitigations": mitigations or [],
+        }
+    )
 
 
-class TestEnvironmentalScoreReachability:
-    def test_internet_exposed_preserves_base_av(self):
-        # internet_exposed: no MAV modifier — environmental score ≈ base score
-        result = compute_environmental_score(
-            _make_finding(reachability="internet_exposed"),
+class TestPriorityScoreReachability:
+    def test_internet_exposed_higher_than_internal(self):
+        score_internet, _ = compute_priority_score(
+            _make_finding(reachability="internet_exposed"), _make_intel()
+        )
+        score_internal, _ = compute_priority_score(
+            _make_finding(reachability="internal"), _make_intel()
+        )
+        assert score_internet > score_internal
+
+    def test_internal_higher_than_local(self):
+        score_internal, _ = compute_priority_score(
+            _make_finding(reachability="internal"), _make_intel()
+        )
+        score_local, _ = compute_priority_score(
+            _make_finding(reachability="local_only"), _make_intel()
+        )
+        assert score_internal > score_local
+
+    def test_reachability_component_in_breakdown(self):
+        _, bd = compute_priority_score(
+            _make_finding(reachability="internet_exposed"), _make_intel()
+        )
+        assert bd["reachability"] == 2.5
+
+        _, bd2 = compute_priority_score(
+            _make_finding(reachability="internal"), _make_intel()
+        )
+        assert bd2["reachability"] == 0.5
+
+
+class TestPriorityScoreIntelSignals:
+    def test_kev_raises_score(self):
+        score_kev, _ = compute_priority_score(
+            _make_finding(), _make_intel(kev_listed=True)
+        )
+        score_no_kev, _ = compute_priority_score(
+            _make_finding(), _make_intel(kev_listed=False)
+        )
+        assert score_kev > score_no_kev
+
+    def test_high_epss_raises_score(self):
+        score_high, _ = compute_priority_score(
+            _make_finding(), _make_intel(epss=0.75)
+        )
+        score_low, _ = compute_priority_score(
+            _make_finding(), _make_intel(epss=0.05)
+        )
+        assert score_high > score_low
+
+    def test_kev_and_epss_are_additive(self):
+        _, bd_kev_only = compute_priority_score(
+            _make_finding(), _make_intel(kev_listed=True, epss=0.05)
+        )
+        _, bd_kev_epss = compute_priority_score(
+            _make_finding(), _make_intel(kev_listed=True, epss=0.75)
+        )
+        assert bd_kev_epss["intel"] > bd_kev_only["intel"]
+
+
+class TestPriorityScoreMitigations:
+    def test_strong_mitigation_reduces_score(self):
+        score_no_mit, _ = compute_priority_score(_make_finding(), _make_intel())
+        score_strong, _ = compute_priority_score(
+            _make_finding(
+                mitigations=[
+                    {
+                        "type": "waf_rule",
+                        "description": "Blocks exploit route",
+                        "causal_claim": "Rule blocks the vulnerable endpoint",
+                        "evidence": ["WAF-123"],
+                    }
+                ]
+            ),
             _make_intel(),
         )
-        assert result is not None
-        score, severity, basis = result
-        assert score == 8.8
-        assert basis == "cvss_v3_environmental"
-
-    def test_internal_reduces_score_via_mav_adjacent(self):
-        # internal: MAV:A applied — Adjacent is less severe than Network (AV:N)
-        result_internal = compute_environmental_score(
-            _make_finding(reachability="internal"),
+        assert score_strong < score_no_mit
+        _, bd = compute_priority_score(
+            _make_finding(
+                mitigations=[
+                    {
+                        "type": "waf_rule",
+                        "description": "x",
+                        "causal_claim": "blocks it",
+                        "evidence": ["WAF-1"],
+                    }
+                ]
+            ),
             _make_intel(),
         )
-        result_internet = compute_environmental_score(
-            _make_finding(reachability="internet_exposed"),
+        assert bd["mitigation_penalty"] == -1.5
+
+    def test_partial_mitigation_smaller_penalty(self):
+        _, bd_partial = compute_priority_score(
+            _make_finding(
+                mitigations=[{"type": "waf_rule", "description": "partial — no causal claim"}]
+            ),
             _make_intel(),
         )
-        assert result_internal is not None and result_internet is not None
-        assert result_internal[0] < result_internet[0]
+        assert bd_partial["mitigation_penalty"] == -0.5
 
-    def test_constrained_external_reduces_score(self):
-        result = compute_environmental_score(
-            _make_finding(reachability="constrained_external"),
-            _make_intel(),
+
+class TestPriorityScoreDifferentiation:
+    def test_two_criticals_differentiable(self):
+        """Within a Critical lane, EPSS magnitude produces distinct scores."""
+        # High EPSS Critical
+        score_high, _ = compute_priority_score(
+            _make_finding(reachability="internet_exposed", utility=["rce"]),
+            _make_intel(cvss_base=9.8, kev_listed=True, epss=0.9),
         )
-        assert result is not None
-        assert result[0] < 8.8  # MAV:A applied
-
-    def test_local_only_reduces_score_further(self):
-        result_local = compute_environmental_score(
-            _make_finding(reachability="local_only"),
-            _make_intel(),
+        # Lower EPSS Critical
+        score_lower, _ = compute_priority_score(
+            _make_finding(reachability="internet_exposed", utility=["auth_bypass"]),
+            _make_intel(cvss_base=7.5, kev_listed=True, epss=0.2),
         )
-        result_internal = compute_environmental_score(
-            _make_finding(reachability="internal"),
-            _make_intel(),
+        assert score_high > score_lower
+        assert score_high >= 9.0  # top of range
+        assert score_lower >= 7.5  # still clearly High/Critical tier
+
+    def test_calibration_real_finding(self):
+        """CVE-2026-2006 equivalent: internal + strong ACL + CVSS 8.8 + EPSS 0.039."""
+        score, bd = compute_priority_score(
+            _make_finding(
+                reachability="internal",
+                utility=["rce", "data_access", "priv_esc", "lateral_movement"],
+                mitigations=[
+                    {
+                        "type": "acl_segmentation",
+                        "description": "VPC ACL restricts TCP/5432",
+                        "causal_claim": "Blocks all direct access to PostgreSQL",
+                        "evidence": ["ACL-0a1b2c3d4e"],
+                    }
+                ],
+            ),
+            _make_intel(cvss_base=8.8, epss=0.039, kev_listed=False),
         )
-        assert result_local is not None and result_internal is not None
-        # MAV:L ≤ MAV:A in most cases
-        assert result_local[0] <= result_internal[0]
+        # Should score around 3.0: medium-low priority despite high CVSS,
+        # because internal reachability and strong mitigation apply.
+        assert 2.5 <= score <= 3.5
+        assert bd["mitigation_penalty"] == -1.5
 
 
-class TestEnvironmentalScoreUtility:
-    def test_data_access_raises_cr_high(self):
-        # CR:H increases score when confidentiality is critical to the org
-        result_da = compute_environmental_score(
-            _make_finding(utility=["data_access"]),
-            _make_intel(vector=_VECTOR_MED, base=5.3),
+class TestPriorityScoreEdgeCases:
+    def test_no_cvss_still_scores(self):
+        """Score is computed from remaining signals when CVSS is unavailable."""
+        score, bd = compute_priority_score(
+            _make_finding(reachability="internet_exposed", utility=["rce"]),
+            _make_intel(cvss_base=None, kev_listed=True, epss=0.8),
         )
-        result_base = compute_environmental_score(
-            _make_finding(utility=["dos"]),
-            _make_intel(vector=_VECTOR_MED, base=5.3),
+        assert score > 0.0
+        assert bd["cvss"] == 0.0
+        assert bd["intel"] > 0.0
+
+    def test_score_clamped_to_10(self):
+        """Score never exceeds 10.0."""
+        score, _ = compute_priority_score(
+            _make_finding(reachability="internet_exposed", utility=["rce"]),
+            _make_intel(cvss_base=10.0, kev_listed=True, epss=0.99),
         )
-        assert result_da is not None and result_base is not None
-        assert result_da[0] >= result_base[0]
+        assert score <= 10.0
 
-    def test_pii_in_data_impact_notes_raises_cr(self):
-        result_pii = compute_environmental_score(
-            _make_finding(utility=["rce"], data_impact_notes="Component accesses PII database"),
-            _make_intel(vector=_VECTOR_MED, base=5.3),
-        )
-        result_no_pii = compute_environmental_score(
-            _make_finding(utility=["rce"]),
-            _make_intel(vector=_VECTOR_MED, base=5.3),
-        )
-        assert result_pii is not None and result_no_pii is not None
-        assert result_pii[0] >= result_no_pii[0]
-
-    def test_basis_is_cvss_v3_environmental(self):
-        result = compute_environmental_score(_make_finding(), _make_intel())
-        assert result is not None
-        assert result[2] == "cvss_v3_environmental"
+    def test_breakdown_totals_match_score(self):
+        """breakdown['total'] == returned score."""
+        score, bd = compute_priority_score(_make_finding(), _make_intel())
+        assert score == bd["total"]
 
 
-class TestEnvironmentalScoreFallbacks:
-    def test_returns_none_when_no_cvss(self):
-        intel_no_cvss = IntelResult(
-            cve_or_id="CVE-2024-9999",
-            retrieved_at=datetime.now(tz=UTC),
-            sources=["NVD"],
-        )
-        result = compute_environmental_score(_make_finding(), intel_no_cvss)
-        assert result is None
-
-    def test_falls_back_to_base_when_no_vector(self):
-        intel_no_vector = _make_intel(vector=None, base=7.5)
-        result = compute_environmental_score(_make_finding(), intel_no_vector)
-        assert result is not None
-        score, severity, basis = result
-        assert score == 7.5
-        assert basis == "cvss_v3_base"
-
-    def test_severity_label_correct_for_base_fallback(self):
-        intel_critical = _make_intel(vector=None, base=9.8)
-        result = compute_environmental_score(_make_finding(), intel_critical)
-        assert result is not None
-        assert result[1] == "Critical"
-
-        intel_medium = _make_intel(vector=None, base=5.0)
-        result2 = compute_environmental_score(_make_finding(), intel_medium)
-        assert result2 is not None
-        assert result2[1] == "Medium"
-
-
-class TestEnvironmentalScoreInAssessment:
-    def test_score_evaluate_populates_numeric_score(self):
+class TestPriorityScoreInAssessment:
+    def test_score_evaluate_populates_priority_score(self):
         from src.rubricai.tools.scoring import score_evaluate
 
         finding = {
-            "id": "FIND-ENV-001",
+            "id": "FIND-RPS-001",
             "cve_or_id": "CVE-2024-9999",
             "component": {"name": "TestLib", "version": "2.0"},
             "entry_point": {"description": "TCP/443"},
@@ -165,21 +223,21 @@ class TestEnvironmentalScoreInAssessment:
             "cve_or_id": "CVE-2024-9999",
             "retrieved_at": datetime.now(tz=UTC).isoformat(),
             "sources": ["NVD"],
-            "cvss": {
-                "base": 8.8,
-                "version": "3.1",
-                "vector": _VECTOR_HIGH,
-            },
+            "cvss": {"base": 8.8, "version": "3.1"},
+            "kev": {"listed": True},
+            "epss": {"score": 0.75, "percentile": 0.9},
         }
         result = score_evaluate(finding, intel)
-        assert result["numeric_score"] == 8.8
-        assert result["numeric_score_basis"] == "cvss_v3_environmental"
+        assert result["priority_score"] is not None
+        assert result["priority_score"] > 0.0
+        assert result["priority_score_breakdown"] is not None
+        assert "total" in result["priority_score_breakdown"]
 
-    def test_score_evaluate_numeric_score_none_without_cvss(self):
+    def test_score_evaluate_includes_breakdown_keys(self):
         from src.rubricai.tools.scoring import score_evaluate
 
         finding = {
-            "id": "FIND-ENV-002",
+            "id": "FIND-RPS-002",
             "cve_or_id": "CVE-2024-0000",
             "component": {"name": "TestLib", "version": "1.0"},
             "entry_point": {"description": "TCP/80"},
@@ -192,5 +250,6 @@ class TestEnvironmentalScoreInAssessment:
             "sources": ["NVD"],
         }
         result = score_evaluate(finding, intel)
-        assert result["numeric_score"] is None
-        assert result["numeric_score_basis"] is None
+        bd = result["priority_score_breakdown"]
+        assert bd is not None
+        assert all(k in bd for k in ("cvss", "reachability", "intel", "utility", "mitigation_penalty", "total"))
