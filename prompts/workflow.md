@@ -8,14 +8,39 @@ This document defines the platform-agnostic interview workflow for the RubricAI 
 
 ## Session Start
 
-Before asking any interview questions:
+**The environment question is always the first thing you ask. No exceptions.**
 
-1. Call `env_read()` to retrieve the current environment state.
-2. If a state exists (version > 0 or non-empty components/network/mitigations), summarise the key context to the engineer and confirm it is still accurate:
-   - "I can see your environment includes: [components]. [Network notes]. [Standing mitigations]. Is this still current?"
-3. If a BOM is stored (`state.bom` is non-empty), mention it: "I have your BOM on record ([N] components). Want me to check it for new CVEs before we start?"
-4. Pre-populate interview answers from the state where possible — skip questions already answered unless the engineer wants to change them.
-5. If no state exists, proceed with the full interview and explain at the end that a state will be saved for future sessions.
+### Step 1 — Ask which environment
+
+Call `env_list()` immediately, then ask:
+
+> "Which environment are we working on today?"
+>
+> [If environments exist: "I have these on record: **[list]**. Or tell me a new name to create one."]
+> [If no environments exist: "I don't have any environments saved yet. What should we call this one? (e.g. 'production', 'staging-web', 'client-acme')"]
+
+Wait for the engineer's answer before doing anything else.
+
+**If `needs_migration: true`** (legacy flat state files from v0.7 or earlier):
+> "I have an existing environment state but it needs a name. What would you like to call it?"
+> → Call `env_migrate_legacy(environment_name=<answer>)` to migrate, then proceed.
+
+### Step 2 — Load the environment
+
+```
+env_read(environment_name=<answer>)
+```
+
+### Step 3 — Summarise and confirm
+
+- If state exists (version > 0 or non-empty data): summarise key context and confirm accuracy.
+  - "Your **[name]** environment includes: [components]. [Network notes]. [Standing mitigations]. Still current?"
+- If BOM is present: "I have your BOM on record ([N] components). Want me to check it for new CVEs before we start?"
+- If empty state (new environment): note it and proceed to the interview.
+
+### Step 4 — Proceed
+
+The environment is now active for the session. All `env_write`, `bom_update`, and `bom_check` calls use this `environment_name`.
 
 ---
 
@@ -26,18 +51,21 @@ The engineer can supply or update their Bill of Materials (installed software st
 ### Storing a BOM
 When the engineer provides a component list (pasted JSON, CSV, or natural language), extract `name` and `version` for each component and call:
 ```
-bom_update(components=[
-    {"name": "nginx", "version": "1.24.0", "type": "service"},
-    {"name": "postgresql", "version": "15.2", "vendor": "PostgreSQL Global Dev"},
-    ...
-])
+bom_update(
+    environment_name=<active_environment>,
+    components=[
+        {"name": "nginx", "version": "1.24.0", "type": "service"},
+        {"name": "postgresql", "version": "15.2"},
+        ...
+    ]
+)
 ```
 Confirm the count stored and note that `bom_check` can now be used for CVE monitoring.
 
 ### Daily CVE check
 When the engineer asks "any new CVEs for my stack?", "check my BOM", or similar:
 ```
-bom_check(days_back=7)   # or days_back=1 for a daily check
+bom_check(environment_name=<active_environment>, days_back=7)
 ```
 Present findings grouped by component. For any CVE with CVSS ≥ 7.0, offer to start a full triage interview immediately.
 
@@ -144,7 +172,7 @@ For each mitigation, ask:
    → produces report card, persists to disk
    → add formats=["markdown","json","pdf"] to also generate a PDF report card
 
-4. env_write(state=<updated_state>)
+4. env_write(state=<updated_state>, environment_name=<active_environment>)
    → save updated environment state for next session
    → include a session_log entry: {timestamp, summary of what was assessed, new context learned}
 ```

@@ -72,7 +72,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.7.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.8.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -159,6 +159,44 @@ docker compose up --build
 
 Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host.
 
+### OpenAI (GPT-4o, o3, Agents SDK)
+
+```bash
+python scripts/render_prompt.py --target openai
+# → prompts/out/openai_system_prompt.md
+```
+
+**Option A — OpenAI Agents SDK (recommended):**
+```python
+from agents import Agent, MCPServerStdio
+
+rubricai = MCPServerStdio(
+    name="rubricai",
+    params={
+        "command": "/path/to/RubricAI/.venv/bin/rubricai",
+        "env": {"RUBRICAI_TRANSPORT": "stdio"},
+    },
+)
+agent = Agent(
+    name="RubricAI",
+    instructions=open("prompts/out/openai_system_prompt.md").read(),
+    mcp_servers=[rubricai],
+    model="gpt-4o",
+)
+```
+
+**Option B — Responses API with remote MCP (SSE transport):**
+```python
+response = client.responses.create(
+    model="gpt-4o",
+    instructions=open("prompts/out/openai_system_prompt.md").read(),
+    tools=[{"type": "mcp", "server_url": "http://localhost:8000/mcp", "require_approval": "never"}],
+    input="I need to assess CVE-2024-21887",
+)
+```
+
+See `prompts/out/openai_system_prompt.md` for full setup instructions including o1/o3 notes.
+
 ### Other MCP clients (generic / Gemini)
 
 ```bash
@@ -175,26 +213,34 @@ Paste the output into your client's system prompt field.
 An AI client conducts a session like this:
 
 ```
-0. env_read()
-   → load existing environment state (components, network, standing mitigations)
-   → pre-populate interview answers; skip questions already answered
+0. env_list()
+   → list available named environments
+   → ALWAYS ask "Which environment are we working on today?" before anything else
 
-1. Interview engineer — collect finding fields:
-     component, version, entry_point, reachability, attacker_utility,
-     mitigations, data_impact, environment
-   → ask for supporting evidence for any mitigation or reachability claim
+0b. env_read(environment_name=<answer>)
+   → load that environment's state (components, network, BOM, standing mitigations)
+   → offer BOM check if bom is non-empty: "Check for new CVEs in your stack?"
 
-2. intel_lookup(cves=["CVE-XXXX-YYYY"])
-   → returns KEV status, EPSS score, CVSS, PoC availability
+1. intel_lookup(cves=["CVE-XXXX-YYYY"])
+   → call IMMEDIATELY after getting CVE ID — before asking the engineer most questions
+   → returns KEV status, EPSS, CVSS, description, derived_finding_context
+   → present derived context (utility, entry point, preconditions) for engineer confirmation
+
+2. Ask only environment questions (not security questions the intel already answers):
+   → Is [component] internet-exposed, internal, or local-only in your environment?
+   → Any compensating controls in place?
 
 3. score_evaluate(finding=..., intel=...)
-   → returns lane (critical/high/medium/low), target, rationale, evidence gaps
+   → returns lane (critical/high/medium/low), priority score, rationale, evidence gaps
 
 4. report_generate(finding=..., intel=..., assessment=..., evidence=[...])
-   → persists markdown + JSON report cards to RUBRICAI_REPORT_DIR
-   → evidence items stored in JSON; Evidence section rendered in markdown
+   → formats=["markdown","json"] by default; add "pdf" for shareable report card
+   → persists to RUBRICAI_REPORT_DIR
 
-5. env_write(state=...)
+5. env_write(state=..., environment_name=<active_environment>)
+   → save updated environment state with session_log entry
+
+
    → save updated environment state with session_log entry
 ```
 
@@ -214,11 +260,13 @@ An engineer receives a scanner alert and needs a priority decision before the ne
 
 ---
 
-**Engineer:** I need to assess CVE-2024-21887 — it's showing up in my scanner for Ivanti Connect Secure v22.3. Our VPN gateway.
+**Claude:** *(calls `env_list`)* Which environment are we working on today? I have these on record: **production-dmz**, **staging-web**. Or give me a new name to create one.
 
-**Claude:** *(calls `env_read` — sees existing environment context)* I have your environment on record: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Still current?
+**Engineer:** Production-dmz.
 
-**Engineer:** Yes.
+**Claude:** *(calls `env_read("production-dmz")`)* I have your environment on record: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Still current?
+
+**Engineer:** Yes. I need to assess CVE-2024-21887 — it's showing up in my scanner for Ivanti Connect Secure v22.3. Our VPN gateway.
 
 **Claude:** *(calls `intel_lookup` immediately)*
 
@@ -281,9 +329,11 @@ An engineer wants to monitor their entire stack for new vulnerabilities, not jus
 
 ---
 
-**Engineer:** I want to register our software stack so we can check for new CVEs.
+**Claude:** *(calls `env_list`)* Which environment are we working on today? I have: **production-dmz**, **staging-web**. Or give me a new name.
 
-**Claude:** *(calls `env_read`)* No BOM on record yet. Paste your component list — name, version, and type if you know it.
+**Engineer:** Production-dmz. I want to register our software stack so we can check for new CVEs.
+
+**Claude:** *(calls `env_read("production-dmz")`)* No BOM on record yet for production-dmz. Paste your component list — name, version, and type if you know it.
 
 **Engineer:**
 ```
@@ -294,7 +344,7 @@ Django 4.2.7 (web framework)
 Redis 7.0.11 (cache)
 ```
 
-**Claude:** *(calls `bom_update`)* Stored 5 components. BOM saved to your environment state — it'll be available in every future session.
+**Claude:** *(calls `bom_update(environment_name="production-dmz", components=[...])`)* Stored 5 components. BOM saved to production-dmz — it'll be available in every future session.
 
 ---
 
@@ -302,7 +352,7 @@ Redis 7.0.11 (cache)
 
 **Engineer:** Any new CVEs for our stack this week?
 
-**Claude:** *(calls `bom_check(days_back=7)`)* Checked all 5 components against NVD. Here's what's new:
+**Claude:** *(calls `bom_check(environment_name="production-dmz", days_back=7)`)* Checked all 5 components against NVD. Here's what's new:
 
 **nginx 1.24.0** — 1 CVE found
 - `CVE-2024-7347` — CVSS 4.7 (Medium) — nginx HTTP/3 QUIC module: specially crafted QUIC packets may cause worker process crash. *Published 2024-08-14.*
@@ -545,6 +595,9 @@ pre-commit run --all-files
 | [#38](https://github.com/incendiary/RubricAI/issues/38) | ✅ Done | Intel-first interview — derive technical fields from CVE data, ask engineers only what they know (v0.7.0) |
 | [#39](https://github.com/incendiary/RubricAI/issues/39) | ✅ Done | BOM tracking — `bom_update` / `bom_check` MCP tools for daily CVE monitoring (v0.7.0) |
 | [#40](https://github.com/incendiary/RubricAI/issues/40) | ✅ Done | PDF export — single-page A4 landscape report card via `formats=["pdf"]` (v0.7.0) |
+| [#45](https://github.com/incendiary/RubricAI/issues/45) | ✅ Done | Multi-environment — named environments, always-first selection, legacy migration (v0.8.0) |
+| [#46](https://github.com/incendiary/RubricAI/issues/46) | ⬜ Planned | Compact PDF report card — dense grid, no whitespace (v0.8.0) |
+| [#47](https://github.com/incendiary/RubricAI/issues/47) | ✅ Done | OpenAI compatibility — Agents SDK + Responses API setup (v0.8.0) |
 
 ---
 

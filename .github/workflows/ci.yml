@@ -48,6 +48,12 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install system dependencies (WeasyPrint)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 \
+            libcairo2 libcairo2-dev libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip

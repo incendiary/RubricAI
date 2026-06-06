@@ -6,6 +6,8 @@ from fastmcp import FastMCP
 
 from .tools.bom import bom_check as _bom_check
 from .tools.bom import bom_update as _bom_update
+from .tools.environment import env_list as _env_list
+from .tools.environment import env_migrate_legacy as _env_migrate_legacy
 from .tools.environment import env_read as _env_read
 from .tools.environment import env_write as _env_write
 from .tools.intel import lookup as _intel_lookup
@@ -70,31 +72,62 @@ def report_generate(
 
 
 @mcp.tool()
-def env_read() -> dict[str, Any]:
-    """Read the current environment state from disk.
+def env_list() -> dict[str, Any]:
+    """List all named environments stored on disk.
 
-    Returns the latest versioned state file from ``RUBRICAI_ENV_DIR``
-    (default ``./environment/``), or an empty state template if no file
-    exists yet. Call this at the start of every session to surface
-    previously captured context.
+    Call this at the very start of every session — before any other tool —
+    to determine which environment the engineer is working in.
+
+    Returns:
+        Dict with ``environments`` (list of names), ``count``, and
+        ``needs_migration`` (True if legacy flat state files exist from
+        a pre-v0.8 install — prompt the engineer to name them).
     """
-    return _env_read()
+    return _env_list()
 
 
 @mcp.tool()
-def env_write(state: dict[str, Any]) -> dict[str, Any]:
-    """Write an updated environment state to disk.
+def env_read(environment_name: str) -> dict[str, Any]:
+    """Read the current state for a named environment.
 
-    Increments the version number and writes a new ``state_vNNN.json``
-    file — existing versions are never overwritten. Also updates
-    ``state_latest.json``. Call this at the end of every session with
-    the full updated state including a session_log entry summarising
-    what was assessed and any new context learned.
+    Returns the latest versioned state, or an empty template if the
+    environment has not been used before. The returned dict includes
+    ``environment_name`` so downstream tools know the active context.
 
     Args:
-        state: Full environment state dict (see env_read for schema).
+        environment_name: Environment to read (e.g. ``"production-dmz"``).
+            Use ``env_list()`` to see available names.
     """
-    return _env_write(state)
+    return _env_read(environment_name)
+
+
+@mcp.tool()
+def env_write(state: dict[str, Any], environment_name: str) -> dict[str, Any]:
+    """Write an updated state for a named environment.
+
+    Increments the version counter and writes ``state_vNNN.json``.
+    Call at the end of every session with the full updated state and
+    a session_log entry summarising what was assessed.
+
+    Args:
+        state: Full environment state dict.
+        environment_name: Target environment (same as used in env_read).
+    """
+    return _env_write(state, environment_name)
+
+
+@mcp.tool()
+def env_migrate_legacy(environment_name: str) -> dict[str, Any]:
+    """Migrate pre-v0.8 flat state files into a named environment.
+
+    Only needed once after upgrading from v0.7 or earlier. If
+    ``env_list()`` returns ``needs_migration: true``, ask the engineer
+    what to call the existing environment and call this tool.
+
+    Args:
+        environment_name: Name to assign to the migrated environment.
+    """
+    return _env_migrate_legacy(environment_name)
 
 
 @mcp.tool()
@@ -108,8 +141,10 @@ def policy_get(policy_version: str | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
-def bom_update(components: list[dict[str, Any]]) -> dict[str, Any]:
-    """Store or replace the Bill of Materials (installed software stack).
+def bom_update(
+    components: list[dict[str, Any]], environment_name: str
+) -> dict[str, Any]:
+    """Store or replace the Bill of Materials for a named environment.
 
     Call this when an engineer supplies their component list. The BOM is
     persisted to the environment state and used by ``bom_check`` to monitor
@@ -118,6 +153,7 @@ def bom_update(components: list[dict[str, Any]]) -> dict[str, Any]:
     Args:
         components: List of component dicts. Each requires ``name`` (str) and
                     ``version`` (str). Optional: ``type``, ``vendor``, ``notes``.
+        environment_name: Target environment (same as used in env_read).
 
     Example::
 
@@ -127,11 +163,11 @@ def bom_update(components: list[dict[str, Any]]) -> dict[str, Any]:
             {"name": "openssl", "version": "3.1.4", "type": "library"},
         ])
     """
-    return _bom_update(components)
+    return _bom_update(components, environment_name)
 
 
 @mcp.tool()
-async def bom_check(days_back: int = 7) -> dict[str, Any]:
+async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]:
     """Check all BOM components for CVEs published or modified recently.
 
     Queries NVD for each stored BOM component and returns any matching CVEs.
@@ -139,10 +175,11 @@ async def bom_check(days_back: int = 7) -> dict[str, Any]:
     workflow.
 
     Args:
+        environment_name: Environment whose BOM to check.
         days_back: How far back to search (default: 7 days).
 
     Returns:
         Dict with ``findings`` (grouped by component), ``total_cves``, and
         a human-readable ``summary``.
     """
-    return await _bom_check(days_back)
+    return await _bom_check(environment_name, days_back)

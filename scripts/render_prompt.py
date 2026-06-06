@@ -19,7 +19,7 @@ WORKFLOW_FILE = PROMPTS_DIR / "workflow.md"
 TEMPLATES_DIR = PROMPTS_DIR / "templates"
 OUT_DIR = PROMPTS_DIR / "out"
 
-TARGETS = ["claude", "generic", "gemini"]
+TARGETS = ["claude", "generic", "gemini", "openai"]
 
 
 def render(target: str) -> Path:
