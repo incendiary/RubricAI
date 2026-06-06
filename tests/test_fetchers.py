@@ -340,7 +340,12 @@ def _nvd_search_response(cve_id: str, cvss_base: float = 8.0) -> dict:
                     "descriptions": [{"lang": "en", "value": "A test vulnerability."}],
                     "metrics": {
                         "cvssMetricV31": [
-                            {"cvssData": {"baseScore": cvss_base, "vectorString": "CVSS:3.1/..."}}
+                            {
+                                "cvssData": {
+                                    "baseScore": cvss_base,
+                                    "vectorString": "CVSS:3.1/...",
+                                }
+                            }
                         ]
                     },
                 }
