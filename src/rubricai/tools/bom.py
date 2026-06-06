@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -10,24 +12,17 @@ from ..schemas.environment import BomEntry, EnvironmentState
 from .environment import _env_dir
 
 
-def _load_state() -> EnvironmentState:
-    """Load current environment state, returning empty state if none exists."""
-    env_dir = _env_dir()
+def _load_state(environment_name: str) -> EnvironmentState:
+    env_dir = _env_dir(environment_name)
     latest = env_dir / "state_latest.json"
     if latest.exists():
-        import json
-
         data = json.loads(latest.read_text(encoding="utf-8"))
         return EnvironmentState.model_validate(data)
     return EnvironmentState()
 
 
-def _save_state(state: EnvironmentState) -> str:
-    """Persist updated state; returns path written."""
-    import json
-    import re
-
-    env_dir = _env_dir()
+def _save_state(state: EnvironmentState, environment_name: str) -> str:
+    env_dir = _env_dir(environment_name)
 
     def _current_version() -> int:
         versions = []
@@ -48,46 +43,48 @@ def _save_state(state: EnvironmentState) -> str:
     return str(versioned)
 
 
-def bom_update(components: list[dict[str, Any]]) -> dict[str, Any]:
-    """Store or replace the Bill of Materials in the environment state.
+def bom_update(
+    components: list[dict[str, Any]], environment_name: str
+) -> dict[str, Any]:
+    """Store or replace the Bill of Materials for a named environment.
 
     Args:
         components: List of component dicts. Each requires ``name`` and
-                    ``version``; optional fields: ``type``, ``vendor``, ``notes``.
+                    ``version``; optional: ``type``, ``vendor``, ``notes``.
+        environment_name: Target environment (must exist or be created via env_read).
 
     Returns:
-        Dict with ``stored`` (count), ``saved_to`` (path), and ``bom`` (list).
+        Dict with ``stored`` (count), ``saved_to``, ``bom``, and ``environment_name``.
     """
     entries = [BomEntry.model_validate(c) for c in components]
-    state = _load_state()
+    state = _load_state(environment_name)
     state.bom = entries
-    path = _save_state(state)
+    path = _save_state(state, environment_name)
     return {
         "stored": len(entries),
         "saved_to": path,
+        "environment_name": environment_name,
         "bom": [e.model_dump(mode="json") for e in entries],
     }
 
 
-async def bom_check(days_back: int = 7) -> dict[str, Any]:
-    """Check all BOM components for CVEs published or modified in the last N days.
-
-    Reads the BOM from the current environment state and queries NVD for each
-    component. Updates ``last_checked`` timestamps on each BOM entry.
+async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]:
+    """Check BOM components for CVEs published or modified in the last N days.
 
     Args:
+        environment_name: Environment whose BOM to check.
         days_back: How many days back to search (default: 7).
 
     Returns:
-        Dict with ``checked_at``, ``days_back``, ``findings`` (grouped by
-        component), and ``total_cves`` count.
+        Dict with ``findings`` (grouped by component), ``total_cves``, and ``summary``.
     """
-    state = _load_state()
+    state = _load_state(environment_name)
 
     if not state.bom:
         return {
             "checked_at": datetime.now(tz=UTC).isoformat(),
             "days_back": days_back,
+            "environment_name": environment_name,
             "findings": {},
             "total_cves": 0,
             "message": "BOM is empty. Use bom_update to store your component list.",
@@ -103,13 +100,13 @@ async def bom_check(days_back: int = 7) -> dict[str, Any]:
         if cves:
             findings[f"{entry.name} {entry.version}"] = cves
 
-    # Persist updated last_checked timestamps
-    _save_state(state)
+    _save_state(state, environment_name)
 
     total = sum(len(v) for v in findings.values())
     return {
         "checked_at": now,
         "days_back": days_back,
+        "environment_name": environment_name,
         "findings": findings,
         "total_cves": total,
         "summary": (
