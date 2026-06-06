@@ -306,11 +306,10 @@ def test_report_patch_train_renders_in_markdown(tmp_path, monkeypatch):
 def test_env_read_falls_back_to_versioned_file_when_no_latest(tmp_path, monkeypatch):
     """env_read returns the highest versioned file when state_latest.json is absent."""
     monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    # Write via env_write (creates both state_v001.json and state_latest.json)
-    env_write({"context_notes": "fallback test"})
-    # Remove state_latest.json to force the versioned-file fallback path
-    (tmp_path / "state_latest.json").unlink()
-    state = env_read()
+    env_write({"context_notes": "fallback test"}, "fallback-env")
+    env_dir = tmp_path / "environments" / "fallback-env"
+    (env_dir / "state_latest.json").unlink()
+    state = env_read("fallback-env")
     assert state["context_notes"] == "fallback test"
 
 
