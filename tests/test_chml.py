@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from src.rubricai.policy.chml import _is_high_utility, _mitigation_effect, evaluate
-from src.rubricai.policy.definitions import POLICY_VERSION
+from src.rubricai.policy.definitions import POLICY_VERSION, _parse_days, get_lane_targets
 from src.rubricai.schemas.finding import Finding, Mitigation
 from src.rubricai.schemas.intel import EpssInfo, IntelResult, KevInfo, PocInfo
 
@@ -207,6 +207,25 @@ class TestEvidenceGaps:
         )
         assert any("causal_claim" in g for g in result.evidence_gaps)
 
+    def test_mitigation_with_causal_claim_but_no_evidence_flagged(self):
+        """Mitigation has causal_claim but empty evidence list → evidence gap raised."""
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                utility=["rce"],
+                mitigations=[
+                    {
+                        "type": "waf_rule",
+                        "description": "Blocks exploit route",
+                        "causal_claim": "Rule blocks the vulnerable endpoint",
+                        # no evidence pointers
+                    }
+                ],
+            ),
+            _make_intel(kev_listed=True),
+        )
+        assert any("no evidence pointers" in g for g in result.evidence_gaps)
+
 
 class TestHelpers:
     def test_mitigation_effect_none(self):
@@ -238,3 +257,28 @@ class TestHelpers:
     def test_policy_version_propagated(self):
         result = evaluate(_make_finding(), _make_intel())
         assert result.policy_version == POLICY_VERSION
+
+
+class TestParseDays:
+    def test_empty_env_var_returns_default(self, monkeypatch):
+        monkeypatch.delenv("RUBRICAI_CRITICAL_DAYS", raising=False)
+        assert _parse_days("RUBRICAI_CRITICAL_DAYS", 3) == 3
+
+    def test_patch_train_string_returns_none(self, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_CRITICAL_DAYS", "patch_train")
+        assert _parse_days("RUBRICAI_CRITICAL_DAYS", 3) is None
+
+    def test_integer_string_returns_int(self, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_HIGH_DAYS", "14")
+        assert _parse_days("RUBRICAI_HIGH_DAYS", 7) == 14
+
+    def test_invalid_string_returns_default(self, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_HIGH_DAYS", "not-a-number")
+        assert _parse_days("RUBRICAI_HIGH_DAYS", 7) == 7
+
+    def test_get_lane_targets_respects_env_override(self, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_CRITICAL_DAYS", "1")
+        monkeypatch.setenv("RUBRICAI_HIGH_DAYS", "patch_train")
+        targets = get_lane_targets()
+        assert targets["critical"] == 1
+        assert targets["high"] is None
