@@ -2,15 +2,13 @@
 
 from datetime import UTC, datetime
 
-import pytest
-
 from src.rubricai.intel_derive import (
     _infer_utility_from_cvss,
     _infer_utility_from_description,
     _parse_cvss_vector,
     derive_finding_context,
 )
-from src.rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult, KevInfo
+from src.rubricai.schemas.intel import CvssInfo, IntelResult
 
 
 def _make_intel(

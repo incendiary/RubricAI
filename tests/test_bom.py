@@ -1,6 +1,6 @@
 """Tests for bom_update and bom_check tools."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
