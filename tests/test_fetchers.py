@@ -283,6 +283,18 @@ async def test_nvd_cvss_falls_back_to_v30(tmp_path):
     assert cvss["base"] == 7.5
 
 
+async def test_nvd_fetch_cvss_returns_none_when_fetch_returns_none(tmp_path):
+    """fetch_cvss returns None when the underlying fetch() finds no record."""
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response({"vulnerabilities": []}))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        cvss = await nvd_fetcher.fetch_cvss("CVE-9999-0000")
+    assert cvss is None
+
+
 async def test_nvd_cvss_returns_none_when_no_metrics(tmp_path):
     """A record with no CVSS metrics returns None from fetch_cvss."""
     no_metrics = _nvd_catalog({})
@@ -307,6 +319,106 @@ async def test_nvd_cache_prevents_second_http_call(tmp_path):
     ):
         await nvd_fetcher.fetch("CVE-2024-5555")
         await nvd_fetcher.fetch("CVE-2024-5555")
+    assert mock_cls.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# NVD search() — keyword-based CVE lookup used by bom_check
+# ---------------------------------------------------------------------------
+
+
+def _nvd_search_response(cve_id: str, cvss_base: float = 8.0) -> dict:
+    """Build a minimal NVD keywordSearch API response."""
+    return {
+        "totalResults": 1,
+        "vulnerabilities": [
+            {
+                "cve": {
+                    "id": cve_id,
+                    "published": "2024-01-15T00:00:00.000",
+                    "lastModified": "2024-02-01T00:00:00.000",
+                    "descriptions": [{"lang": "en", "value": "A test vulnerability."}],
+                    "metrics": {
+                        "cvssMetricV31": [
+                            {
+                                "cvssData": {
+                                    "baseScore": cvss_base,
+                                    "vectorString": "CVSS:3.1/...",
+                                }
+                            }
+                        ]
+                    },
+                }
+            }
+        ],
+    }
+
+
+async def test_nvd_search_returns_cve_list(tmp_path):
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-1234")))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        results = await nvd_fetcher.search("nginx 1.20", days_back=7)
+    assert len(results) == 1
+    assert results[0]["id"] == "CVE-2024-1234"
+    assert results[0]["description"] == "A test vulnerability."
+    assert results[0]["cvss_base"] == 8.0
+    assert results[0]["cvss_version"] == "3.1"
+    assert "nvd.nist.gov" in results[0]["url"]
+
+
+async def test_nvd_search_empty_results(tmp_path):
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response({"totalResults": 0, "vulnerabilities": []}))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        results = await nvd_fetcher.search("unknown-package 99.0", days_back=7)
+    assert results == []
+
+
+async def test_nvd_search_description_truncated(tmp_path):
+    """Descriptions longer than 300 chars are truncated."""
+    long_desc = "x" * 500
+    response = {
+        "totalResults": 1,
+        "vulnerabilities": [
+            {
+                "cve": {
+                    "id": "CVE-2024-9999",
+                    "published": "",
+                    "lastModified": "",
+                    "descriptions": [{"lang": "en", "value": long_desc}],
+                    "metrics": {},
+                }
+            }
+        ],
+    }
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response(response))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        results = await nvd_fetcher.search("anything", days_back=1)
+    assert len(results[0]["description"]) == 300
+
+
+async def test_nvd_search_cache_prevents_second_call(tmp_path):
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-7777")))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch(
+            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client
+        ) as mock_cls,
+    ):
+        await nvd_fetcher.search("redis 7.0", days_back=7)
+        await nvd_fetcher.search("redis 7.0", days_back=7)
     assert mock_cls.call_count == 1
 
 
@@ -363,6 +475,24 @@ def test_poc_clean_vendor_refs_returns_not_available():
 
 def test_poc_empty_refs_returns_not_available():
     assert _classify([])["available"] is False
+
+
+async def test_poc_fetch_with_exploit_refs_returns_available():
+    """When NVD record has exploit-db references, fetch returns available=True."""
+    record_with_refs = {
+        "references": [
+            {"url": "https://www.exploit-db.com/exploits/51337"},
+            {"url": "https://vendor.example.com/advisory"},
+        ]
+    }
+    with patch(
+        "src.rubricai.fetchers.poc.nvd.fetch",
+        new=AsyncMock(return_value=record_with_refs),
+    ):
+        result = await poc_fetcher.fetch("CVE-2024-1111")
+    assert result["available"] is True
+    assert result["confidence"] == "high"
+    assert "exploit-db.com" in result["references"][0]
 
 
 async def test_poc_no_nvd_record_returns_not_available():
