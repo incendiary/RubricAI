@@ -5,159 +5,172 @@
 <style>
   @page {
     size: A4 landscape;
-    margin: 1cm;
+    margin: 0.8cm;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: -apple-system, Arial, sans-serif;
-    font-size: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 9px;
     color: #1a1a2e;
     background: #fff;
-    width: 100%;
-    height: 100%;
   }
 
   /* ── Lane colours ── */
-  .lane-critical { background: #c0392b; color: #fff; }
-  .lane-high     { background: #e67e22; color: #fff; }
-  .lane-medium   { background: #f39c12; color: #fff; }
-  .lane-low      { background: #27ae60; color: #fff; }
-  .lane-bar-critical { border-left: 6px solid #c0392b; }
-  .lane-bar-high     { border-left: 6px solid #e67e22; }
-  .lane-bar-medium   { border-left: 6px solid #f39c12; }
-  .lane-bar-low      { border-left: 6px solid #27ae60; }
+  .bg-critical { background: #c0392b; color: #fff; }
+  .bg-high     { background: #e67e22; color: #fff; }
+  .bg-medium   { background: #f39c12; color: #fff; }
+  .bg-low      { background: #27ae60; color: #fff; }
 
-  /* ── Layout ── */
+  /* ── Card shell ── */
   .card {
     display: grid;
-    grid-template-rows: auto 1fr auto;
-    height: calc(100vh - 2cm);
-    gap: 6px;
+    grid-template-rows: auto auto auto 1fr auto;
+    height: calc(100vh - 1.6cm);
+    gap: 3px;
   }
 
-  /* Header */
+  /* ── Header ── */
   .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 8px 10px;
+    position: relative;
+    padding: 5px 8px;
     border-bottom: 2px solid #1a1a2e;
   }
-  .header-left .finding-id { font-size: 14px; font-weight: 700; }
-  .header-left .cve-id { font-size: 11px; color: #555; margin-top: 2px; }
-  .header-right { text-align: right; font-size: 9px; color: #777; }
-
-  /* Verdict band */
-  .verdict-band {
-    display: flex;
-    align-items: stretch;
-    gap: 6px;
-    padding: 6px 0;
+  .header .finding-id {
+    font-size: 13px;
+    font-weight: 700;
+    display: inline;
   }
-  .verdict-lane {
-    padding: 10px 16px;
-    border-radius: 4px;
-    font-size: 22px;
+  .header .cve-id {
+    font-size: 10px;
+    color: #444;
+    margin-top: 1px;
+  }
+  .severity-badge {
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
     font-weight: 900;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 120px;
-    text-align: center;
   }
-  .verdict-lane .lane-sub { font-size: 9px; font-weight: 400; margin-top: 2px; }
-  .verdict-details {
-    flex: 1;
-    padding: 6px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background: #f9f9f9;
-  }
-  .verdict-details .sla { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
-  .verdict-details .priority { font-size: 11px; color: #333; margin-bottom: 6px; }
-  .rationale-list { font-size: 9px; color: #444; list-style: disc; padding-left: 14px; }
-  .rationale-list li + li { margin-top: 2px; }
 
-  /* Main grid */
+  /* ── Component strip ── */
+  .component-strip {
+    padding: 3px 8px;
+    background: #f5f5f5;
+    font-size: 8px;
+    color: #555;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .component-strip strong { color: #1a1a2e; }
+
+  /* ── Verdict strip ── */
+  .verdict-strip {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+  }
+  .verdict-strip .priority-score {
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.92;
+  }
+
+  /* ── Main grid ── */
   .main-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 6px;
+    grid-template-columns: 42% 30% 28%;
+    gap: 4px;
     overflow: hidden;
   }
-  .panel {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
-  }
-  .panel-title {
-    background: #1a1a2e;
-    color: #fff;
-    font-size: 9px;
+  .col { overflow: hidden; }
+  .col-head {
+    font-size: 8px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 4px 8px;
+    color: #888;
+    padding: 0 0 2px 0;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 3px;
   }
-  .panel-body { padding: 6px 8px; font-size: 9px; }
 
-  /* Tables */
-  table { width: 100%; border-collapse: collapse; font-size: 9px; }
-  th {
-    text-align: left;
+  /* ── Signal grid (4 columns: signal · value · applied · score) ── */
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 5.5em 6em 3em 3.5em;
+    row-gap: 2px;
+    column-gap: 2px;
+    font-size: 8.5px;
+  }
+  .signal-grid .sh {
     font-weight: 600;
-    color: #555;
-    padding: 2px 4px;
-    border-bottom: 1px solid #eee;
-    white-space: nowrap;
+    color: #777;
+    font-size: 7.5px;
+    padding-bottom: 1px;
   }
-  td { padding: 3px 4px; border-bottom: 1px solid #f0f0f0; }
-  td:first-child { font-weight: 600; white-space: nowrap; color: #333; }
+  .signal-grid .sname { color: #444; }
+  .signal-grid .sval  { color: #1a1a2e; font-weight: 600; }
+  .signal-grid .sappl { text-align: center; }
+  .signal-grid .spts  { text-align: right; font-family: monospace; color: #555; }
   .applied-yes { color: #27ae60; font-weight: 700; }
-  .applied-no  { color: #c0392b; }
-  .applied-mid { color: #e67e22; }
+  .applied-no  { color: #bbb; }
+  .applied-mid { color: #e67e22; font-weight: 600; }
+  .no-data     { color: #bbb; font-style: italic; }
 
-  /* Actions */
-  .action-list { list-style: none; padding: 0; }
-  .action-list li {
-    padding: 3px 0;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 9px;
+  /* ── Rationale + Actions + Gaps columns ── */
+  .rat-list, .act-list, .gap-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
   }
-  .action-list li::before { content: "→ "; color: #e67e22; font-weight: 700; }
-
-  /* Gaps */
-  .gap-list { list-style: none; padding: 0; }
-  .gap-list li {
-    padding: 3px 0;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: 9px;
-  }
+  .rat-list li { padding: 1px 0; font-size: 8.5px; color: #333; }
+  .rat-list li::before { content: "• "; color: #888; }
+  .act-list li { padding: 1px 0; font-size: 8.5px; color: #1a1a2e; }
+  .act-list li::before { content: "→ "; color: #e67e22; font-weight: 700; }
+  .gap-list li { padding: 1px 0; font-size: 8.5px; color: #555; }
   .gap-list li::before { content: "☐ "; color: #c0392b; }
 
-  /* Footer */
-  .footer {
-    display: flex;
-    justify-content: space-between;
-    font-size: 8px;
-    color: #aaa;
-    border-top: 1px solid #ddd;
-    padding-top: 4px;
+  .section-sep {
+    border: none;
+    border-top: 1px solid #eee;
+    margin: 4px 0;
   }
 
-  /* Utility */
+  .mitig-entry { margin-bottom: 3px; font-size: 8px; }
+  .mitig-entry strong { color: #1a1a2e; }
+  .mitig-entry .causal { color: #27ae60; font-style: italic; }
+
   .pill {
     display: inline-block;
-    background: #eee;
-    border-radius: 10px;
-    padding: 1px 6px;
-    font-size: 8px;
-    margin: 1px 2px 1px 0;
+    background: #fdecea;
+    color: #c0392b;
+    border-radius: 8px;
+    padding: 0px 5px;
+    font-size: 7.5px;
+    margin: 1px 1px 0 0;
   }
-  .pill-high { background: #fdecea; color: #c0392b; }
-  .no-data { color: #aaa; font-style: italic; }
+
+  /* ── Footer ── */
+  .footer {
+    border-top: 1px solid #ddd;
+    padding-top: 3px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7px;
+    font-family: monospace;
+    color: #aaa;
+  }
 </style>
 </head>
 <body>
@@ -165,167 +178,145 @@
 
   <!-- Header -->
   <div class="header">
-    <div class="header-left">
-      <div class="finding-id">{{ finding.id }}</div>
-      <div class="cve-id">{{ finding.cve_or_id }}{% if finding.title %} — {{ finding.title }}{% endif %}</div>
-    </div>
-    <div class="header-right">
-      Policy: {{ assessment.policy_version }}<br>
-      Generated: {{ generated_at }}<br>
-      Component: {{ finding.component.name }} {{ finding.component.version or "" }}
-    </div>
+    <span class="finding-id">{{ finding.id }}</span>
+    <div class="cve-id">{{ finding.cve_or_id }}{% if finding.title %} — {{ finding.title }}{% endif %}</div>
+    <span class="severity-badge bg-{{ assessment.lane }}">{{ assessment.lane | upper }}</span>
   </div>
 
-  <!-- Verdict band -->
-  <div class="verdict-band">
-    <div class="verdict-lane lane-{{ assessment.lane }}">
-      {{ assessment.lane | upper }}
-      <span class="lane-sub">
-        {% if assessment.target.days is not none %}{{ assessment.target.days }}-day SLA{% else %}Patch train{% endif %}
-      </span>
-    </div>
-    <div class="verdict-details lane-bar-{{ assessment.lane }}">
-      <div class="sla">
-        {% if assessment.target.days is not none %}Remediate within {{ assessment.target.days }} day(s){% else %}Schedule on next patch train{% endif %}
-        {% if assessment.priority_score is not none %} &nbsp;|&nbsp; Priority score: <strong>{{ assessment.priority_score }} / 10</strong>{% endif %}
-      </div>
-      <ul class="rationale-list">
-        {% for r in assessment.rationale %}<li>{{ r }}</li>{% endfor %}
-      </ul>
-    </div>
+  <!-- Component strip -->
+  <div class="component-strip">
+    <strong>{{ finding.component.name }}</strong>
+    {{ finding.component.version or "" }}
+    · {{ finding.component.type }}
+    · {{ finding.entry_point.description }}
+    {% if finding.environment and finding.environment.stage %} · {{ finding.environment.stage }}{% endif %}
+    {% for u in finding.attacker_utility %}<span class="pill">{{ u }}</span>{% endfor %}
   </div>
 
-  <!-- Main grid: 3 columns -->
+  <!-- Verdict strip -->
+  <div class="verdict-strip bg-{{ assessment.lane }}">
+    <span>
+      ⬤&nbsp;
+      {% if assessment.target.days is not none %}REMEDIATE IN {{ assessment.target.days }} HOUR{% if assessment.target.days != 1 %}S{% endif %}{% else %}SCHEDULE FOR PATCH TRAIN{% endif %}
+    </span>
+    <span class="priority-score">
+      {% if assessment.priority_score is not none %}Priority: {{ assessment.priority_score }} / 10{% endif %}
+    </span>
+  </div>
+
+  <!-- Main 3-column grid -->
   <div class="main-grid">
 
     <!-- Col 1: Intel signals -->
-    <div class="panel">
-      <div class="panel-title">Intel Signals</div>
-      <div class="panel-body">
-        <table>
-          <tr><th>Signal</th><th>Value</th><th>Applied</th></tr>
-          <tr>
-            <td>CVSS</td>
-            <td>{% if intel.cvss %}{{ intel.cvss.base }} (v{{ intel.cvss.version }}){% else %}<span class="no-data">—</span>{% endif %}</td>
-            <td>{% if intel.cvss %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">✗</span>{% endif %}</td>
-          </tr>
-          <tr>
-            <td>CISA KEV</td>
-            <td>{% if intel.kev and intel.kev.listed %}<strong>Listed</strong>{% elif intel.kev %}Not listed{% else %}<span class="no-data">—</span>{% endif %}</td>
-            <td>{% if intel.kev and intel.kev.listed %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">✗</span>{% endif %}</td>
-          </tr>
-          <tr>
-            <td>EPSS</td>
-            <td>{% if intel.epss %}{{ "%.4f"|format(intel.epss.score) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th pct){% else %}<span class="no-data">—</span>{% endif %}</td>
-            <td>{% if intel.epss and intel.epss.score >= 0.5 %}<span class="applied-yes">✓ high</span>{% elif intel.epss and intel.epss.score >= 0.1 %}<span class="applied-mid">⚠ mid</span>{% else %}<span class="applied-no">✗</span>{% endif %}</td>
-          </tr>
-          <tr>
-            <td>Reachability</td>
-            <td>{{ finding.reachability | replace("_", " ") }}</td>
-            <td>{% if finding.reachability == "internet_exposed" %}<span class="applied-yes">✓ inet</span>{% else %}<span class="applied-mid">⚠</span>{% endif %}</td>
-          </tr>
-          <tr>
-            <td>Utility</td>
-            <td>{% if assessment.score_breakdown %}{{ assessment.score_breakdown.utility | upper }}{% endif %}</td>
-            <td>{% if assessment.score_breakdown and assessment.score_breakdown.utility == "high" %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">✗</span>{% endif %}</td>
-          </tr>
-          <tr>
-            <td>Mitigations</td>
-            <td>{% if assessment.score_breakdown %}{{ assessment.score_breakdown.mitigation_effect }}{% endif %}</td>
-            <td>{% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %}<span class="applied-yes">✓</span>{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %}<span class="applied-mid">⚠</span>{% else %}<span class="applied-no">—</span>{% endif %}</td>
-          </tr>
-        </table>
-        {% if assessment.priority_score_breakdown %}
-        <div style="margin-top:6px; font-size:8px; color:#666; border-top:1px solid #eee; padding-top:4px;">
-          Score: {{ assessment.priority_score_breakdown.cvss }}(cvss)
-          + {{ assessment.priority_score_breakdown.reachability }}(reach)
-          + {{ assessment.priority_score_breakdown.intel }}(intel)
-          + {{ assessment.priority_score_breakdown.utility }}(util)
-          {{ assessment.priority_score_breakdown.mitigation_penalty }}(mit)
-          = <strong>{{ assessment.priority_score_breakdown.total }}</strong>
-        </div>
-        {% endif %}
+    <div class="col">
+      <div class="col-head">Intel Signals</div>
+      <div class="signal-grid">
+        <!-- Header row -->
+        <span class="sh">Signal</span>
+        <span class="sh">Value</span>
+        <span class="sh" style="text-align:center">Applied</span>
+        <span class="sh" style="text-align:right">Score Δ</span>
+
+        <!-- CVSS -->
+        <span class="sname">CVSS</span>
+        <span class="sval">{% if intel.cvss %}{{ intel.cvss.base }} v{{ intel.cvss.version }}{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sappl">{% if intel.cvss %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.cvss }}{% else %}—{% endif %}</span>
+
+        <!-- KEV -->
+        <span class="sname">CISA KEV</span>
+        <span class="sval">{% if intel.kev and intel.kev.listed %}<strong>Listed</strong>{% elif intel.kev %}Not listed{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sappl">{% if intel.kev and intel.kev.listed %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if assessment.priority_score_breakdown and intel.kev and intel.kev.listed %}+1.5{% else %}—{% endif %}</span>
+
+        <!-- EPSS -->
+        <span class="sname">EPSS</span>
+        <span class="sval">{% if intel.epss %}{{ "%.0f"|format(intel.epss.percentile * 100) }}th pct{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sappl">{% if intel.epss and intel.epss.score >= 0.5 %}<span class="applied-yes">✓</span>{% elif intel.epss and intel.epss.score >= 0.1 %}<span class="applied-mid">⚠</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if intel.epss and intel.epss.score >= 0.5 %}+1.0{% elif intel.epss and intel.epss.score >= 0.1 %}+0.5{% else %}—{% endif %}</span>
+
+        <!-- Reachability -->
+        <span class="sname">Reachability</span>
+        <span class="sval">{{ finding.reachability | replace("_", " ") }}</span>
+        <span class="sappl">{% if finding.reachability == "internet_exposed" %}<span class="applied-yes">✓</span>{% elif finding.reachability == "constrained" %}<span class="applied-mid">⚠</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.reachability }}{% else %}—{% endif %}</span>
+
+        <!-- Utility -->
+        <span class="sname">Utility</span>
+        <span class="sval">{% if assessment.score_breakdown %}{{ assessment.score_breakdown.utility | upper }}{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sappl">{% if assessment.score_breakdown and assessment.score_breakdown.utility == "high" %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.utility }}{% else %}—{% endif %}</span>
+
+        <!-- Mitigations -->
+        <span class="sname">Mitigations</span>
+        <span class="sval">{% if assessment.score_breakdown %}{{ assessment.score_breakdown.mitigation_effect }}{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sappl">{% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %}<span class="applied-yes">✓</span>{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %}<span class="applied-mid">⚠</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
+        <span class="spts">{% if assessment.priority_score_breakdown %}{{ assessment.priority_score_breakdown.mitigation_penalty }}{% else %}—{% endif %}</span>
       </div>
+
+      {% if finding.mitigations %}
+      <hr class="section-sep">
+      <div style="font-size:7.5px; color:#888; text-transform:uppercase; font-weight:700; margin-bottom:2px;">Mitigations</div>
+      {% for m in finding.mitigations %}
+      <div class="mitig-entry">
+        <strong>{{ m.type }}</strong> — {{ m.description }}
+        {% if m.causal_claim %}<br><span class="causal">✓ {{ m.causal_claim }}</span>{% endif %}
+      </div>
+      {% endfor %}
+      {% endif %}
     </div>
 
-    <!-- Col 2: Component + Actions -->
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <div class="panel">
-        <div class="panel-title">Component</div>
-        <div class="panel-body">
-          <table>
-            <tr><td>Name</td><td>{{ finding.component.name }}</td></tr>
-            <tr><td>Version</td><td>{{ finding.component.version or "—" }}</td></tr>
-            <tr><td>Type</td><td>{{ finding.component.type }}</td></tr>
-            <tr><td>Entry point</td><td>{{ finding.entry_point.description }}</td></tr>
-            {% if finding.environment %}
-            <tr><td>Stage</td><td>{{ finding.environment.stage or "—" }}</td></tr>
-            {% endif %}
-          </table>
-          <div style="margin-top:5px;">
-            {% for u in finding.attacker_utility %}
-            <span class="pill pill-high">{{ u }}</span>
-            {% endfor %}
-          </div>
-        </div>
+    <!-- Col 2: Rationale -->
+    <div class="col">
+      <div class="col-head">Rationale</div>
+      <ul class="rat-list">
+        {% for r in assessment.rationale %}<li>{{ r }}</li>{% endfor %}
+      </ul>
+
+      {% if evidence %}
+      <hr class="section-sep">
+      <div style="font-size:7.5px; color:#888; text-transform:uppercase; font-weight:700; margin-bottom:2px;">Evidence</div>
+      {% for e in evidence %}
+      <div style="font-size:8px; padding:1px 0; color:#555;">
+        {% if e.verified %}<span style="color:#27ae60;">✓</span>{% else %}<span style="color:#c0392b;">✗</span>{% endif %}
+        {{ e.claim }} <span style="color:#aaa;">({{ e.type }})</span>
       </div>
-      <div class="panel" style="flex:1;">
-        <div class="panel-title">Required Actions</div>
-        <div class="panel-body">
-          <ul class="action-list">
-            {% for a in assessment.actions %}<li>{{ a }}</li>{% endfor %}
-          </ul>
-        </div>
-      </div>
+      {% endfor %}
+      {% endif %}
     </div>
 
-    <!-- Col 3: Evidence gaps + Mitigations -->
-    <div style="display:flex; flex-direction:column; gap:6px;">
-      <div class="panel">
-        <div class="panel-title">Evidence Gaps</div>
-        <div class="panel-body">
-          {% if assessment.evidence_gaps %}
-          <ul class="gap-list">
-            {% for g in assessment.evidence_gaps %}<li>{{ g }}</li>{% endfor %}
-          </ul>
-          {% else %}
-          <span class="no-data">No gaps identified.</span>
-          {% endif %}
-        </div>
-      </div>
-      <div class="panel" style="flex:1;">
-        <div class="panel-title">Mitigations{% if evidence %} / Evidence{% endif %}</div>
-        <div class="panel-body">
-          {% if finding.mitigations %}
-          {% for m in finding.mitigations %}
-          <div style="margin-bottom:5px; {% if not loop.first %}border-top:1px solid #eee; padding-top:4px;{% endif %}">
-            <strong>{{ m.type }}</strong><br>
-            <span style="color:#555;">{{ m.description }}</span>
-            {% if m.causal_claim %}<br><em style="color:#27ae60; font-size:8px;">✓ {{ m.causal_claim }}</em>{% endif %}
-          </div>
-          {% endfor %}
-          {% else %}
-          <span class="no-data">None documented.</span>
-          {% endif %}
-          {% if evidence %}
-          {% for e in evidence %}
-          <div style="margin-top:4px; font-size:8px; border-top:1px solid #eee; padding-top:3px;">
-            {% if e.verified %}<span style="color:#27ae60;">✓</span>{% else %}<span style="color:#c0392b;">✗</span>{% endif %}
-            {{ e.claim }} ({{ e.type }})
-          </div>
-          {% endfor %}
-          {% endif %}
-        </div>
-      </div>
+    <!-- Col 3: Actions + Gaps -->
+    <div class="col">
+      <div class="col-head">Required Actions</div>
+      <ul class="act-list">
+        {% for a in assessment.actions %}<li>{{ a }}</li>{% endfor %}
+      </ul>
+
+      {% if assessment.evidence_gaps %}
+      <hr class="section-sep">
+      <div class="col-head" style="margin-top:3px;">Evidence Gaps</div>
+      <ul class="gap-list">
+        {% for g in assessment.evidence_gaps %}<li>{{ g }}</li>{% endfor %}
+      </ul>
+      {% endif %}
     </div>
 
   </div><!-- /main-grid -->
 
-  <!-- Footer -->
+  <!-- Footer: score formula + metadata -->
   <div class="footer">
-    <span>RubricAI {{ assessment.policy_version }} · {{ finding.id }}</span>
-    <span>For internal security team review · Authorized use only</span>
-    <span>{{ generated_at }}</span>
+    <span>
+      {% if assessment.priority_score_breakdown %}
+      Score: {{ assessment.priority_score_breakdown.cvss }}(cvss)
+      + {{ assessment.priority_score_breakdown.reachability }}(reach)
+      + {{ assessment.priority_score_breakdown.intel }}(intel)
+      + {{ assessment.priority_score_breakdown.utility }}(util)
+      {{ assessment.priority_score_breakdown.mitigation_penalty }}(mit)
+      = {{ assessment.priority_score_breakdown.total }}
+      {% endif %}
+    </span>
+    <span>{{ assessment.policy_version }} · {{ finding.id }}</span>
+    <span>For authorized security team review only · {{ generated_at }}</span>
   </div>
 
 </div><!-- /card -->
