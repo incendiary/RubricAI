@@ -596,8 +596,10 @@ pre-commit run --all-files
 | [#39](https://github.com/incendiary/RubricAI/issues/39) | ✅ Done | BOM tracking — `bom_update` / `bom_check` MCP tools for daily CVE monitoring (v0.7.0) |
 | [#40](https://github.com/incendiary/RubricAI/issues/40) | ✅ Done | PDF export — single-page A4 landscape report card via `formats=["pdf"]` (v0.7.0) |
 | [#45](https://github.com/incendiary/RubricAI/issues/45) | ✅ Done | Multi-environment — named environments, always-first selection, legacy migration (v0.8.0) |
-| [#46](https://github.com/incendiary/RubricAI/issues/46) | ⬜ Planned | Compact PDF report card — dense grid, no whitespace (v0.8.0) |
+| [#46](https://github.com/incendiary/RubricAI/issues/46) | ✅ Done | Compact PDF report card — dense grid, no whitespace (v0.8.0) |
 | [#47](https://github.com/incendiary/RubricAI/issues/47) | ✅ Done | OpenAI compatibility — Agents SDK + Responses API setup (v0.8.0) |
+| [#51](https://github.com/incendiary/RubricAI/issues/51) | ⬜ Open | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
+| [#52](https://github.com/incendiary/RubricAI/issues/52) | ⬜ Open | server.py smoke test — import and tool registration count (v0.9.0) |
 
 ---
 
