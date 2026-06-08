@@ -1,5 +1,8 @@
 """FastMCP server — registers all RubricAI tools."""
 
+import logging
+import os
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
@@ -14,6 +17,22 @@ from .tools.intel import lookup as _intel_lookup
 from .tools.policy import policy_get as _policy_get
 from .tools.report import report_generate as _report_generate
 from .tools.scoring import score_evaluate as _score_evaluate
+
+# Configure logging at server startup.
+# Level: RUBRICAI_LOG_LEVEL env var (default INFO).
+# Output: ~/.local/share/rubricai/rubricai.log + stderr.
+_log_level = os.getenv("RUBRICAI_LOG_LEVEL", "INFO").upper()
+_log_path = (
+    Path(os.getenv("RUBRICAI_LOG_DIR", str(Path.home() / ".local/share/rubricai")))
+    / "rubricai.log"
+)
+_log_path.parent.mkdir(parents=True, exist_ok=True)
+logging.basicConfig(
+    level=_log_level,
+    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    handlers=[logging.FileHandler(_log_path), logging.StreamHandler()],
+    force=True,  # override any root logger config set by FastMCP
+)
 
 mcp = FastMCP("RubricAI")
 

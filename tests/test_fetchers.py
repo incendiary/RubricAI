@@ -420,6 +420,20 @@ async def test_nvd_search_description_truncated(tmp_path):
     assert len(results[0]["description"]) == 300
 
 
+async def test_nvd_search_max_results_caps_pagination(tmp_path):
+    """max_results stops pagination before all pages are fetched."""
+    # Response claims 500 total results but only delivers 1 per page
+    big_response = {**_nvd_search_response("CVE-2024-5000"), "totalResults": 500}
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response(big_response))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        results = await nvd_fetcher.search("ubuntu", days_back=3650, max_results=1)
+    assert len(results) == 1  # stopped after first page reached the cap
+
+
 async def test_nvd_search_cache_prevents_second_call(tmp_path):
     cache = FileCache(tmp_path)
     client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-7777")))
