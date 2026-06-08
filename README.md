@@ -562,6 +562,24 @@ isort .
 pre-commit run --all-files
 ```
 
+### Troubleshooting
+
+**Watch the server log in real time:**
+
+```bash
+tail -f ~/.local/share/rubricai/rubricai.log
+```
+
+Each `bom_check` call logs one line per component showing which fetcher was used (OSV or NVD), how many CVEs came back, and any rate-limit or HTTP errors. This is the fastest way to diagnose unexpected zero-result responses or slow queries.
+
+Log verbosity is controlled by `RUBRICAI_LOG_LEVEL` (default `INFO`). Set to `DEBUG` for full request/response detail.
+
+**Environment variables not reaching the MCP server:**
+
+Claude Desktop spawns the MCP subprocess with only the vars listed in the `env` block of `claude_desktop_config.json` — shell dotfiles and system environment are not inherited. RubricAI calls `load_dotenv()` at startup, so any variable set in your `.env` file is loaded automatically. Variables explicitly set in `claude_desktop_config.json` take precedence over `.env`.
+
+If a variable appears in `.env` but doesn't seem to be taking effect, check that `.env` is in the project root (same directory as `pyproject.toml`) and restart Claude Desktop after any changes.
+
 ### Environment variables
 
 | Variable | Default | Description |
