@@ -12,6 +12,7 @@ class EvidenceItem(BaseModel):
         "network_config",
         "acl_rule",
         "waf_config",
+        "screenshot",
         "screenshot_description",
         "log_extract",
         "other",
@@ -19,3 +20,5 @@ class EvidenceItem(BaseModel):
     content: str | None = None
     analyst_note: str | None = None
     verified: bool = False
+    # Absolute path to a stored file (screenshot, config export, etc.)
+    file_path: str | None = None

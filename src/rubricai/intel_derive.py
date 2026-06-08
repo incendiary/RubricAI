@@ -111,10 +111,12 @@ def derive_finding_context(intel: IntelResult) -> dict:
         confidence = "none"
 
     # Entry point hint from CVSS Attack Vector
+    # cvss_av is surfaced at the top level (not nested in entry_point) so that
+    # entry_point can be passed directly to Finding.entry_point without violating
+    # its extra="forbid" constraint.
     av = vector_components.get("AV")
     entry_point = {
         "description": _AV_LABELS.get(av, "Unknown — check CVE description"),
-        "cvss_av": av,
     }
 
     # Preconditions from CVSS
@@ -130,6 +132,7 @@ def derive_finding_context(intel: IntelResult) -> dict:
     return {
         "attacker_utility": attacker_utility,
         "entry_point": entry_point,
+        "cvss_av": av,  # top-level context annotation; not a Finding field
         "preconditions": preconditions,
         "confidence": confidence,
         "description": intel.description,

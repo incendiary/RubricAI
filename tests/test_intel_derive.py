@@ -187,7 +187,10 @@ class TestDeriveFindingContext:
             cvss_vector="CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
         )
         ctx = derive_finding_context(intel)
-        assert ctx["entry_point"]["cvss_av"] == "N"
+        # cvss_av is top-level — NOT nested in entry_point so that entry_point
+        # is safe to pass directly to Finding.entry_point (extra="forbid")
+        assert "cvss_av" not in ctx["entry_point"]
+        assert ctx["cvss_av"] == "N"
         assert "Network" in ctx["entry_point"]["description"]
 
     def test_entry_point_physical_av(self):
@@ -195,13 +198,14 @@ class TestDeriveFindingContext:
             cvss_vector="CVSS:3.1/AV:P/AC:H/PR:H/UI:R/S:U/C:L/I:N/A:N",
         )
         ctx = derive_finding_context(intel)
-        assert ctx["entry_point"]["cvss_av"] == "P"
+        assert "cvss_av" not in ctx["entry_point"]
+        assert ctx["cvss_av"] == "P"
         assert "Physical" in ctx["entry_point"]["description"]
 
     def test_entry_point_unknown_when_no_cvss(self):
         intel = _make_intel(description="Some vulnerability")
         ctx = derive_finding_context(intel)
-        assert ctx["entry_point"]["cvss_av"] is None
+        assert ctx["cvss_av"] is None
         assert "Unknown" in ctx["entry_point"]["description"]
 
     def test_preconditions_from_cvss(self):
