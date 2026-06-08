@@ -137,7 +137,7 @@ class TestBomCheck:
         with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
             await bom_check(_ENV, days_back=14)
 
-        mock_search.assert_called_once_with("openssh 9.0", days_back=14)
+        mock_search.assert_called_once_with("openssh", days_back=14)
 
     @pytest.mark.asyncio
     async def test_last_checked_updated(self, tmp_path, monkeypatch):

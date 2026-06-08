@@ -94,7 +94,11 @@ async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]
     now = datetime.now(tz=UTC).isoformat()
 
     for entry in state.bom:
-        keyword = f"{entry.name} {entry.version}"
+        # NVD keywordSearch uses AND logic across all words — a compound
+        # "Log4j-core 2.14.0" query won't match CVE descriptions that say
+        # "Apache Log4j2 2.0–2.14.1". Search by name only; the engineer
+        # confirms version applicability during triage.
+        keyword = entry.name
         cves = await nvd_fetcher.search(keyword, days_back=days_back)
         entry.last_checked = now
         if cves:

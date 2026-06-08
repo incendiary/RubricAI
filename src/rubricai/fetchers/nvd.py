@@ -47,16 +47,24 @@ async def fetch(cve_id: str) -> dict | None:
     return result
 
 
-async def search(keyword: str, days_back: int = 7) -> list[dict]:
+async def search(
+    keyword: str, days_back: int = 7, max_results: int = 200
+) -> list[dict]:
     """Search NVD for CVEs matching *keyword* modified in the last *days_back* days.
 
     Uses the NVD ``keywordSearch`` + ``lastModStartDate`` parameters.
     Results are cached for ``_SEARCH_TTL_HOURS`` hours.
 
+    Args:
+        keyword: Product name to search for (name-only, no version string).
+        days_back: Lookback window in days.
+        max_results: Cap on total CVEs returned (prevents runaway pagination
+            for broad keywords like "ubuntu" with large lookback windows).
+
     Returns a list of dicts, each with keys:
         id, description, cvss_base, cvss_version, published, last_modified
     """
-    cache_key = f"{keyword.lower()}:{days_back}"
+    cache_key = f"{keyword.lower()}:{days_back}:{max_results}"
     cached = _cache.get(f"{_NS}_search", cache_key)
     if cached is not None:
         return cached
@@ -126,9 +134,10 @@ async def search(keyword: str, days_back: int = 7) -> list[dict]:
 
             total = data.get("totalResults", 0)
             start_index += page_size
-            if start_index >= total:
+            if start_index >= total or len(results) >= max_results:
                 break
 
+    results = results[:max_results]
     _cache.set(f"{_NS}_search", cache_key, results, ttl_hours=_SEARCH_TTL_HOURS)
     return results
 
