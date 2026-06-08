@@ -225,6 +225,23 @@ class TestDeriveFindingContext:
         assert ctx["preconditions"]["privileges_required"] == "none"
         assert ctx["preconditions"]["user_interaction"] is False
 
+    def test_preconditions_use_unknown_when_no_cvss(self):
+        """No CVSS vector → preconditions fall back to model defaults, not None."""
+        intel = IntelResult(
+            cve_or_id="CVE-2024-TEST",
+            retrieved_at=datetime.now(tz=UTC),
+            sources=["NVD"],
+        )
+        ctx = derive_finding_context(intel)
+        # Values must be Preconditions-compatible (no None) so the dict can be
+        # passed directly to Finding.preconditions without a validation error.
+        from src.rubricai.schemas.finding import Preconditions
+
+        p = Preconditions.model_validate(ctx["preconditions"])
+        assert p.privileges_required == "unknown"
+        assert p.attack_complexity == "unknown"
+        assert p.user_interaction is False
+
     def test_attacker_utility_from_description_preferred(self):
         # Description says RCE but CVSS impacts alone would give data_access/tampering
         intel = _make_intel(
