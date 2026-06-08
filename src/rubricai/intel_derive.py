@@ -120,13 +120,15 @@ def derive_finding_context(intel: IntelResult) -> dict:
     }
 
     # Preconditions from CVSS
+    # Use Preconditions model defaults ("unknown"/False) when CVSS data is absent
+    # so this dict is always safe to pass directly to Finding.preconditions.
     pr = vector_components.get("PR")
     ac = vector_components.get("AC")
     ui = vector_components.get("UI")
     preconditions = {
-        "privileges_required": _PR_MAP.get(pr) if pr else None,
-        "attack_complexity": _AC_MAP.get(ac) if ac else None,
-        "user_interaction": ui == "R" if ui else None,
+        "privileges_required": _PR_MAP.get(pr, "unknown") if pr else "unknown",
+        "attack_complexity": _AC_MAP.get(ac, "unknown") if ac else "unknown",
+        "user_interaction": (ui == "R") if ui is not None else False,
     }
 
     return {
