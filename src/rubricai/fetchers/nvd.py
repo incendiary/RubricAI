@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -24,70 +25,107 @@ def _headers() -> dict:
     return {"apiKey": key} if key else {}
 
 
-async def fetch(cve_id: str) -> dict | None:
-    """Return raw NVD CVE record for *cve_id*, or ``None`` if not found."""
-    cached = _cache.get(_NS, cve_id.upper())
-    if cached is not None:
-        return cached
+def _process_cve(cve: dict) -> dict:
+    """Normalise a raw NVD CVE record to the standard search result shape."""
+    cve_id = cve.get("id", "")
+    description = next(
+        (d["value"] for d in cve.get("descriptions", []) if d.get("lang") == "en"),
+        "",
+    )
+    cvss_base = None
+    cvss_version = None
+    metrics = cve.get("metrics", {})
+    for key, ver in [
+        ("cvssMetricV31", "3.1"),
+        ("cvssMetricV30", "3.0"),
+        ("cvssMetricV2", "2.0"),
+    ]:
+        entries = metrics.get(key, [])
+        if entries:
+            cvss_base = entries[0].get("cvssData", {}).get("baseScore")
+            cvss_version = ver
+            break
+    return {
+        "id": cve_id,
+        "description": description[:300],
+        "cvss_base": cvss_base,
+        "cvss_version": cvss_version,
+        "published": cve.get("published", ""),
+        "last_modified": cve.get("lastModified", ""),
+        "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
+    }
 
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-        resp = await client.get(
-            _API_URL,
-            params={"cveId": cve_id},
-            headers=_headers(),
-        )
-        if resp.status_code == 404:
-            return None
-        resp.raise_for_status()
-        data = resp.json()
 
-    vulns = data.get("vulnerabilities", [])
-    if not vulns:
-        return None
+def _normalize_keywords(name: str, vendor: str | None = None) -> list[str]:
+    """Expand a BOM component name into NVD keyword search candidates.
 
-    result = vulns[0].get("cve", {})
-    _cache.set(_NS, cve_id.upper(), result, ttl_hours=_TTL_HOURS)
+    NVD uses vendor/product names from the CPE dictionary, which often differ from
+    package-manager artifact IDs. This function generates plausible variations so that
+    at least one is likely to match NVD's keyword index.
+
+    Examples::
+
+        "log4j-core"          → ["log4j-core", "log4j"]
+        "libcurl"             → ["libcurl", "curl"]
+        "spring-boot-starter" → ["spring-boot-starter", "spring-boot", "spring"]
+        "python3-requests"    → ["python3-requests", "requests"]
+        vendor="apache"       → ["apache httpd", "httpd"]  (for name="httpd")
+
+    Returns candidates in descending specificity (most specific first).
+    Caller tries each candidate and merges results by CVE ID.
+    """
+    candidates: list[str] = []
+
+    # 1. Vendor + name (most specific when vendor is known)
+    if vendor:
+        candidates.append(f"{vendor} {name}")
+
+    # 2. Name as-is
+    candidates.append(name)
+
+    # 3. Strip common packaging suffixes NVD doesn't use
+    stripped = re.sub(
+        r"[-_](core|lib|api|client|server|common|impl|runtime|base|all|full|util|utils)$",
+        "",
+        name,
+        flags=re.IGNORECASE,
+    )
+    if stripped != name:
+        candidates.append(stripped)
+
+    # 4. Strip OS packaging prefixes (python3-requests → requests, libcurl → curl)
+    unprefixed = re.sub(
+        r"^(lib|python3?-|perl-|ruby-|php-|node(?:js)?-)",
+        "",
+        name,
+        flags=re.IGNORECASE,
+    )
+    if unprefixed not in candidates:
+        candidates.append(unprefixed)
+
+    # 5. First hyphen/underscore segment ("log4j-core" → "log4j")
+    parts = re.split(r"[-_]", name)
+    if len(parts) > 1 and parts[0] not in candidates:
+        candidates.append(parts[0])
+
+    # Deduplicate preserving order, drop empty strings
+    seen: set[str] = set()
+    result: list[str] = []
+    for c in candidates:
+        c = c.strip()
+        if c and c not in seen:
+            seen.add(c)
+            result.append(c)
     return result
 
 
-async def search(
-    keyword: str, days_back: int = 7, max_results: int = 200
+async def _search_single(
+    keyword: str,
+    start_date: str,
+    end_date: str,
+    max_results: int,
 ) -> list[dict]:
-    """Search NVD for CVEs matching *keyword* modified in the last *days_back* days.
-
-    Uses the NVD ``keywordSearch`` + ``lastModStartDate`` + ``lastModEndDate``
-    parameters. Both date params are required by the NVD v2 API — omitting
-    ``lastModEndDate`` returns a 404 regardless of keyword or range.
-    Results are cached for ``_SEARCH_TTL_HOURS`` hours.
-
-    Args:
-        keyword: Product name to search for (name-only, no version string).
-        days_back: Lookback window in days.
-        max_results: Cap on total CVEs returned (prevents runaway pagination
-            for broad keywords like "ubuntu" with large lookback windows).
-
-    Returns a list of dicts, each with keys:
-        id, description, cvss_base, cvss_version, published, last_modified
-    """
-    cache_key = f"{keyword.lower()}:{days_back}:{max_results}"
-    cached = _cache.get(f"{_NS}_search", cache_key)
-    if cached is not None:
-        return cached
-
-    now = datetime.now(tz=UTC)
-    _fmt = "%Y-%m-%dT%H:%M:%S.000"
-    start_date = (now - timedelta(days=days_back)).strftime(_fmt)
-    end_date = now.strftime(_fmt)
-
-    _logger.debug(
-        "NVD search: keyword=%r days_back=%d start=%s end=%s max_results=%d",
-        keyword,
-        days_back,
-        start_date,
-        end_date,
-        max_results,
-    )
-
+    """Single-keyword NVD CVE search; returns raw normalised dicts."""
     results: list[dict] = []
     start_index = 0
     page_size = 100
@@ -118,47 +156,101 @@ async def search(
             data = resp.json()
 
             for vuln in data.get("vulnerabilities", []):
-                cve = vuln.get("cve", {})
-                cve_id = cve.get("id", "")
-                description = next(
-                    (
-                        d["value"]
-                        for d in cve.get("descriptions", [])
-                        if d.get("lang") == "en"
-                    ),
-                    "",
-                )
-                # Extract best available CVSS score
-                cvss_base = None
-                cvss_version = None
-                metrics = cve.get("metrics", {})
-                for key, ver in [
-                    ("cvssMetricV31", "3.1"),
-                    ("cvssMetricV30", "3.0"),
-                    ("cvssMetricV2", "2.0"),
-                ]:
-                    entries = metrics.get(key, [])
-                    if entries:
-                        cvss_base = entries[0].get("cvssData", {}).get("baseScore")
-                        cvss_version = ver
-                        break
-
-                results.append(
-                    {
-                        "id": cve_id,
-                        "description": description[:300],  # truncate for storage
-                        "cvss_base": cvss_base,
-                        "cvss_version": cvss_version,
-                        "published": cve.get("published", ""),
-                        "last_modified": cve.get("lastModified", ""),
-                        "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
-                    }
-                )
+                results.append(_process_cve(vuln.get("cve", {})))
 
             total = data.get("totalResults", 0)
             start_index += page_size
             if start_index >= total or len(results) >= max_results:
                 break
+
+    return results
+
+
+async def fetch(cve_id: str) -> dict | None:
+    """Return raw NVD CVE record for *cve_id*, or ``None`` if not found."""
+    cached = _cache.get(_NS, cve_id.upper())
+    if cached is not None:
+        return cached
+
+    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        resp = await client.get(
+            _API_URL,
+            params={"cveId": cve_id},
+            headers=_headers(),
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        data = resp.json()
+
+    vulns = data.get("vulnerabilities", [])
+    if not vulns:
+        return None
+
+    result = vulns[0].get("cve", {})
+    _cache.set(_NS, cve_id.upper(), result, ttl_hours=_TTL_HOURS)
+    return result
+
+
+async def search(
+    keyword: str,
+    days_back: int = 7,
+    max_results: int = 200,
+    vendor: str | None = None,
+) -> list[dict]:
+    """Search NVD for CVEs matching *keyword* modified in the last *days_back* days.
+
+    Expands *keyword* into multiple NVD search candidates via ``_normalize_keywords``
+    (strips packaging suffixes, tries split-on-hyphen variants, etc.) and merges
+    results by CVE ID. This handles cases where developer-facing names like
+    ``"log4j-core"`` don't match NVD's ``"log4j"`` exactly.
+
+    Uses ``keywordSearch`` + ``lastModStartDate`` + ``lastModEndDate``. Both date
+    params are required by the NVD v2 API — omitting ``lastModEndDate`` returns 404.
+    Results are cached for ``_SEARCH_TTL_HOURS`` hours (keyed on original keyword).
+
+    Args:
+        keyword: Component name (name-only, no version string).
+        days_back: Lookback window in days.
+        max_results: Cap on total CVEs returned (prevents runaway pagination for
+            broad keywords like ``"ubuntu"`` with large lookback windows).
+        vendor: Optional vendor hint passed to ``_normalize_keywords`` to prepend a
+            ``"vendor name"`` candidate (e.g. ``"apache httpd"``).
+
+    Returns a list of dicts, each with keys:
+        id, description, cvss_base, cvss_version, published, last_modified, url
+    """
+    cache_key = f"{keyword.lower()}:{days_back}:{max_results}"
+    cached = _cache.get(f"{_NS}_search", cache_key)
+    if cached is not None:
+        return cached
+
+    now = datetime.now(tz=UTC)
+    _fmt = "%Y-%m-%dT%H:%M:%S.000"
+    start_date = (now - timedelta(days=days_back)).strftime(_fmt)
+    end_date = now.strftime(_fmt)
+
+    keywords = _normalize_keywords(keyword, vendor)
+    _logger.debug(
+        "NVD search: keyword=%r candidates=%r days_back=%d max_results=%d",
+        keyword,
+        keywords,
+        days_back,
+        max_results,
+    )
+
+    seen_ids: set[str] = set()
+    results: list[dict] = []
+
+    for kw in keywords:
+        if len(results) >= max_results:
+            break
+        for cve in await _search_single(kw, start_date, end_date, max_results):
+            if cve["id"] and cve["id"] not in seen_ids:
+                seen_ids.add(cve["id"])
+                results.append(cve)
+        if len(results) >= max_results:
+            break
 
     results = results[:max_results]
     _logger.info(

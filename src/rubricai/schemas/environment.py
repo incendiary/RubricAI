@@ -14,6 +14,13 @@ class BomEntry(BaseModel):
     vendor: str | None = None
     notes: str | None = None
     last_checked: str | None = None  # ISO timestamp of last CVE scan
+    ecosystem: str | None = (
+        None  # OSV ecosystem: Maven, PyPI, npm, Go, RubyGems, NuGet,
+    )
+    # Debian, Ubuntu, Alpine, Rocky Linux, etc.
+    # Shorthand accepted: "maven", "python", "js", "dotnet", "ruby", "golang", "rust".
+    # When set, OSV is used for lookup (precise, package-manager-native names).
+    # When unset, falls back to NVD keyword search with name normalisation.
 
 
 class EnvironmentState(BaseModel):

@@ -9,10 +9,23 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ..fetchers import nvd as nvd_fetcher
+from ..fetchers import osv as osv_fetcher
+from ..fetchers.osv import ECOSYSTEM_ALIASES
 from ..schemas.environment import BomEntry, EnvironmentState
 from .environment import _env_dir
 
 _logger = logging.getLogger(__name__)
+
+
+def _resolve_ecosystem(ecosystem: str | None, type_: str | None) -> str | None:
+    """Return a canonical OSV ecosystem string from BomEntry hints.
+
+    Checks ``ecosystem`` first, then falls back to ``type``. Both fields accept the
+    same developer shorthand (``"maven"``, ``"pypi"``, ``"npm"``, etc.).
+    Returns ``None`` if neither maps to a known OSV ecosystem — caller uses NVD.
+    """
+    hint = (ecosystem or type_ or "").lower()
+    return ECOSYSTEM_ALIASES.get(hint)
 
 
 def _load_state(environment_name: str) -> EnvironmentState:
@@ -97,19 +110,50 @@ async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]
     now = datetime.now(tz=UTC).isoformat()
 
     for entry in state.bom:
-        # NVD keywordSearch uses AND logic across all words — a compound
-        # "Log4j-core 2.14.0" query won't match CVE descriptions that say
-        # "Apache Log4j2 2.0–2.14.1". Search by name only; the engineer
-        # confirms version applicability during triage.
-        keyword = entry.name
-        _logger.info(
-            "BOM check: %s %s → keyword=%r days_back=%d",
-            entry.name,
-            entry.version,
-            keyword,
-            days_back,
-        )
-        cves = await nvd_fetcher.search(keyword, days_back=days_back)
+        osv_ecosystem = _resolve_ecosystem(entry.ecosystem, entry.type)
+
+        # Maven packages in OSV require full groupId:artifactId coordinates
+        # (e.g. "org.apache.logging.log4j:log4j-core"). A bare artifact ID like
+        # "log4j-core" returns 0 results — fall back to NVD normalization instead,
+        # which strips the "-core" suffix and tries "log4j" as the keyword.
+        if osv_ecosystem == "Maven" and ":" not in entry.name:
+            _logger.info(
+                "BOM check: %s %s — Maven bare artifact ID → NVD fallback"
+                " (tip: use groupId:artifactId for OSV precision)",
+                entry.name,
+                entry.version,
+            )
+            osv_ecosystem = None
+
+        if osv_ecosystem:
+            # OSV knows package-manager-native names (Maven artifact IDs, PyPI names,
+            # npm modules, etc.) — no NVD naming knowledge required from the user.
+            _logger.info(
+                "BOM check: %s %s → OSV ecosystem=%r days_back=%s",
+                entry.name,
+                entry.version,
+                osv_ecosystem,
+                days_back,
+            )
+            cves = await osv_fetcher.search(
+                entry.name,
+                osv_ecosystem,
+                version=entry.version,
+                days_back=days_back,
+            )
+        else:
+            # No ecosystem hint — fall back to NVD keyword search with name
+            # normalisation (strips "-core"/"-lib" suffixes, tries split variants, etc.)
+            _logger.info(
+                "BOM check: %s %s → NVD keyword days_back=%d",
+                entry.name,
+                entry.version,
+                days_back,
+            )
+            cves = await nvd_fetcher.search(
+                entry.name, days_back=days_back, vendor=entry.vendor
+            )
+
         _logger.info(
             "BOM check: %s %s → %d CVE(s)",
             entry.name,

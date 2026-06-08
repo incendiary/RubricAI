@@ -16,7 +16,9 @@ from src.rubricai.cache import FileCache
 from src.rubricai.fetchers import epss as epss_fetcher
 from src.rubricai.fetchers import kev as kev_fetcher
 from src.rubricai.fetchers import nvd as nvd_fetcher
+from src.rubricai.fetchers import osv as osv_fetcher
 from src.rubricai.fetchers import poc as poc_fetcher
+from src.rubricai.fetchers.nvd import _normalize_keywords
 from src.rubricai.fetchers.poc import _classify
 from src.rubricai.tools.intel import lookup
 from src.rubricai.tools.report import report_generate
@@ -446,6 +448,148 @@ async def test_nvd_search_cache_prevents_second_call(tmp_path):
         await nvd_fetcher.search("redis 7.0", days_back=7)
         await nvd_fetcher.search("redis 7.0", days_back=7)
     assert mock_cls.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# NVD _normalize_keywords — pure function, no I/O
+# ---------------------------------------------------------------------------
+
+
+def test_nvd_normalize_strips_core_suffix():
+    candidates = _normalize_keywords("log4j-core")
+    assert "log4j" in candidates
+    assert "log4j-core" in candidates
+
+
+def test_nvd_normalize_strips_lib_prefix():
+    candidates = _normalize_keywords("libcurl")
+    assert "curl" in candidates
+    assert "libcurl" in candidates
+
+
+def test_nvd_normalize_vendor_first():
+    candidates = _normalize_keywords("httpd", vendor="apache")
+    assert candidates[0] == "apache httpd"
+
+
+def test_nvd_normalize_no_duplicates():
+    candidates = _normalize_keywords("redis")
+    assert len(candidates) == len(set(candidates))
+
+
+def test_nvd_normalize_python_prefix():
+    candidates = _normalize_keywords("python3-requests")
+    assert "requests" in candidates
+
+
+# ---------------------------------------------------------------------------
+# OSV fetcher
+# ---------------------------------------------------------------------------
+
+
+def _osv_mock_client(response):
+    """Build a mock httpx.AsyncClient that supports .post()."""
+    client = AsyncMock()
+    client.post = AsyncMock(return_value=response)
+    client.__aenter__ = AsyncMock(return_value=client)
+    client.__aexit__ = AsyncMock(return_value=None)
+    return client
+
+
+def _osv_vuln(cve_id: str, modified: str = "2026-01-15T00:00:00Z") -> dict:
+    return {
+        "id": f"GHSA-xxxx-{cve_id[-4:]}",
+        "aliases": [cve_id],
+        "summary": f"Test vulnerability {cve_id}",
+        "details": f"A test vulnerability for {cve_id}.",
+        "published": "2024-01-01T00:00:00Z",
+        "modified": modified,
+    }
+
+
+async def test_osv_search_returns_normalised_cves(tmp_path):
+    """OSV response is normalised to the same dict shape as nvd.search()."""
+    cache = FileCache(tmp_path)
+    resp = _mock_response({"vulns": [_osv_vuln("CVE-2021-44228")]})
+    client = _osv_mock_client(resp)
+    with (
+        patch.object(osv_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+    ):
+        results = await osv_fetcher.search("log4j-core", "Maven", version="2.14.0")
+
+    assert len(results) == 1
+    r = results[0]
+    assert r["id"] == "CVE-2021-44228"
+    assert "CVE-2021-44228" in r["url"]
+    assert r["cvss_base"] is None  # not parsed from OSV
+    assert r["source"] == "osv"
+
+
+async def test_osv_search_no_cve_alias_skipped(tmp_path):
+    """Vulns with only GHSA aliases (no CVE-* alias) are excluded."""
+    ghsa_only = {
+        "id": "GHSA-xxxx-0000-xxxx",
+        "aliases": ["GHSA-xxxx-0000-xxxx"],  # no CVE alias
+        "summary": "GHSA only",
+        "published": "2024-01-01T00:00:00Z",
+        "modified": "2026-01-01T00:00:00Z",
+    }
+    cache = FileCache(tmp_path)
+    resp = _mock_response({"vulns": [ghsa_only]})
+    client = _osv_mock_client(resp)
+    with (
+        patch.object(osv_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+    ):
+        results = await osv_fetcher.search("some-package", "PyPI")
+
+    assert results == []
+
+
+async def test_osv_search_filters_by_days_back(tmp_path):
+    """Vulns modified before the days_back cutoff are excluded."""
+    recent = _osv_vuln("CVE-2026-1111", modified="2026-06-01T00:00:00Z")
+    old = _osv_vuln("CVE-2020-2222", modified="2020-01-01T00:00:00Z")
+    cache = FileCache(tmp_path)
+    resp = _mock_response({"vulns": [recent, old]})
+    client = _osv_mock_client(resp)
+    with (
+        patch.object(osv_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+    ):
+        results = await osv_fetcher.search("requests", "PyPI", days_back=30)
+
+    # Only the recent vuln should survive the days_back filter
+    ids = [r["id"] for r in results]
+    assert "CVE-2020-2222" not in ids
+
+
+async def test_osv_search_http_error_returns_empty(tmp_path):
+    """HTTP 500 from OSV returns [] without raising."""
+    cache = FileCache(tmp_path)
+    resp = _mock_response({}, status_code=500)
+    client = _osv_mock_client(resp)
+    with (
+        patch.object(osv_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+    ):
+        results = await osv_fetcher.search("express", "npm")
+
+    assert results == []
+
+
+def test_osv_ecosystem_alias_resolved():
+    """Developer shorthand 'maven' resolves to canonical 'Maven'."""
+    from src.rubricai.fetchers.osv import _resolve_ecosystem
+
+    assert _resolve_ecosystem("maven") == "Maven"
+    assert _resolve_ecosystem("Maven") == "Maven"
+    assert _resolve_ecosystem("java") == "Maven"
+    assert _resolve_ecosystem("pypi") == "PyPI"
+    assert _resolve_ecosystem("python") == "PyPI"
+    assert _resolve_ecosystem("npm") == "npm"
+    assert _resolve_ecosystem("js") == "npm"
 
 
 # ---------------------------------------------------------------------------
