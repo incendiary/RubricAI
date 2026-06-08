@@ -170,9 +170,18 @@ For each mitigation, ask:
 3. report_generate(finding=<finding_dict>, intel=<intel_result>, assessment=<assessment>,
                    evidence=[<evidence_items>], formats=["markdown","json"])
    → produces report card, persists to disk
-   → add formats=["markdown","json","pdf"] to also generate a PDF report card
 
-4. env_write(state=<updated_state>, environment_name=<active_environment>)
+4. **Ask before closing:**
+   "Would you like a PDF report card?"
+   - **Simple card** — compact A4 landscape scorecard, no appendix
+   - **Report with evidence appendix** — card + appendix pages with all evidence content
+     and any embedded screenshots *(only offer this option if evidence items were collected)*
+   - **No PDF**
+
+   → Simple:          report_generate(..., formats=["pdf"])
+   → With appendix:   report_generate(..., formats=["pdf"], include_evidence_appendix=True)
+
+5. env_write(state=<updated_state>, environment_name=<active_environment>)
    → save updated environment state for next session
    → include a session_log entry: {timestamp, summary of what was assessed, new context learned}
 ```
@@ -192,12 +201,19 @@ For each mitigation, ask:
 
 ## Output
 
-Immediately after `report_generate` returns — without waiting for user input — send a single response that contains all four of the following sections in order:
+Immediately after `report_generate` returns — without waiting for user input — send a single response that contains all of the following in order:
 
 1. **Verdict** — one sentence: lane, SLA target, and the primary rationale.
 2. **Actions** — bullet list of the `actions` array from the assessment.
 3. **Full report card** — render the `report_markdown` field from the `report_generate` result verbatim as markdown.
 4. **Decisions log** — brief plain-English summary of each material decision made during the interview (reachability classification, mitigations accepted/rejected, intel signals applied), so the engineer can audit the reasoning.
+5. **PDF offer** — end with:
+   > "Would you like a PDF report card?
+   > 1. Simple card (compact scorecard)
+   > 2. Report with evidence appendix *(includes all evidence + any screenshots)*"  ← omit option 2 if no evidence was collected
+   > 3. No PDF"
+
+   Then wait for the response before calling `report_generate` again.
 
 Do not stop after the tool call. Do not say "I've generated the report." Present the content.
 
