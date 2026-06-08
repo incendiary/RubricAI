@@ -81,6 +81,8 @@ async def search(keyword: str, days_back: int = 7) -> list[dict]:
                 },
                 headers=_headers(),
             )
+            if resp.status_code == 404:
+                break  # NVD returns 404 for zero-result keyword queries — no results
             resp.raise_for_status()
             data = resp.json()
 
