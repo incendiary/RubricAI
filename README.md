@@ -72,7 +72,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.8.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.8.1 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -600,6 +600,8 @@ pre-commit run --all-files
 | [#47](https://github.com/incendiary/RubricAI/issues/47) | ✅ Done | OpenAI compatibility — Agents SDK + Responses API setup (v0.8.0) |
 | [#51](https://github.com/incendiary/RubricAI/issues/51) | ⬜ Open | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
 | [#52](https://github.com/incendiary/RubricAI/issues/52) | ⬜ Open | server.py smoke test — import and tool registration count (v0.9.0) |
+| [#54](https://github.com/incendiary/RubricAI/issues/54) | ⬜ Open | Bug: score_evaluate schema mismatch — cvss_av in entry_point violates extra=forbid (v0.8.1) |
+| [#55](https://github.com/incendiary/RubricAI/issues/55) | ⬜ Open | Evidence file storage + PDF appendix — file_path on EvidenceItem, embedded screenshots (v0.8.1) |
 
 ---
 
