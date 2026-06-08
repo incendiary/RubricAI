@@ -170,9 +170,14 @@ For each mitigation, ask:
 3. report_generate(finding=<finding_dict>, intel=<intel_result>, assessment=<assessment>,
                    evidence=[<evidence_items>], formats=["markdown","json"])
    → produces report card, persists to disk
-   → add formats=["markdown","json","pdf"] to also generate a PDF report card
 
-4. env_write(state=<updated_state>, environment_name=<active_environment>)
+4. **Ask before closing:** "Would you like a PDF report card? It's a single-page A4
+   landscape scorecard suitable for sharing with the security team."
+   → If yes: call report_generate again with formats=["pdf"] and report the saved path.
+   → The PDF is generated separately so the markdown report is always produced first
+     without waiting for the PDF render.
+
+5. env_write(state=<updated_state>, environment_name=<active_environment>)
    → save updated environment state for next session
    → include a session_log entry: {timestamp, summary of what was assessed, new context learned}
 ```
@@ -198,6 +203,7 @@ Immediately after `report_generate` returns — without waiting for user input �
 2. **Actions** — bullet list of the `actions` array from the assessment.
 3. **Full report card** — render the `report_markdown` field from the `report_generate` result verbatim as markdown.
 4. **Decisions log** — brief plain-English summary of each material decision made during the interview (reachability classification, mitigations accepted/rejected, intel signals applied), so the engineer can audit the reasoning.
+5. **PDF offer** — end the response with: "Would you like a PDF report card? (single-page A4 landscape, suitable for sharing)" — then wait. If confirmed, call `report_generate` with `formats=["pdf"]` and reply with the saved path.
 
 Do not stop after the tool call. Do not say "I've generated the report." Present the content.
 
