@@ -137,7 +137,7 @@ class TestBomCheck:
         with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
             await bom_check(_ENV, days_back=14)
 
-        mock_search.assert_called_once_with("openssh", days_back=14)
+        mock_search.assert_called_once_with("openssh", days_back=14, vendor=None)
 
     @pytest.mark.asyncio
     async def test_last_checked_updated(self, tmp_path, monkeypatch):
@@ -153,6 +153,108 @@ class TestBomCheck:
         assert state["bom"][0]["last_checked"] is not None
         assert result["checked_at"] is not None
         datetime.fromisoformat(result["checked_at"])
+
+    @pytest.mark.asyncio
+    async def test_ecosystem_field_routes_to_osv(self, tmp_path, monkeypatch):
+        """BomEntry with full Maven coordinate (groupId:artifactId) uses OSV."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update(
+            [
+                {
+                    "name": "org.apache.logging.log4j:log4j-core",
+                    "version": "2.14.0",
+                    "ecosystem": "Maven",
+                }
+            ],
+            _ENV,
+        )
+        mock_osv = AsyncMock(
+            return_value=[{"id": "CVE-2021-44228", "description": "Log4Shell"}]
+        )
+        mock_nvd = AsyncMock(return_value=[])
+        with (
+            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+        ):
+            result = await bom_check(_ENV, days_back=30)
+
+        mock_osv.assert_called_once_with(
+            "org.apache.logging.log4j:log4j-core",
+            "Maven",
+            version="2.14.0",
+            days_back=30,
+        )
+        mock_nvd.assert_not_called()
+        assert result["total_cves"] == 1
+
+    @pytest.mark.asyncio
+    async def test_maven_bare_artifact_id_falls_back_to_nvd(
+        self, tmp_path, monkeypatch
+    ):
+        """Maven bare artifact ID (no groupId) falls back to NVD normalisation."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": "log4j-core", "version": "2.14.0", "type": "maven"}], _ENV)
+        mock_osv = AsyncMock(return_value=[])
+        mock_nvd = AsyncMock(return_value=[])
+        with (
+            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+        ):
+            await bom_check(_ENV)
+
+        # OSV not called — bare artifact ID doesn't work with OSV Maven
+        mock_osv.assert_not_called()
+        mock_nvd.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_type_pypi_routes_to_osv(self, tmp_path, monkeypatch):
+        """BomEntry with type='pypi' routes to OSV (PyPI uses simple names)."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": "requests", "version": "2.28.0", "type": "pypi"}], _ENV)
+        mock_osv = AsyncMock(return_value=[])
+        mock_nvd = AsyncMock(return_value=[])
+        with (
+            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+        ):
+            await bom_check(_ENV)
+
+        mock_osv.assert_called_once()
+        mock_nvd.assert_not_called()
+        call_args = mock_osv.call_args
+        assert call_args.args[1] == "PyPI"
+
+    @pytest.mark.asyncio
+    async def test_type_library_routes_to_nvd(self, tmp_path, monkeypatch):
+        """BomEntry with type='library' (not an ecosystem hint) falls back to NVD."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": "openssl", "version": "3.1.4", "type": "library"}], _ENV)
+        mock_osv = AsyncMock(return_value=[])
+        mock_nvd = AsyncMock(return_value=[])
+        with (
+            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+        ):
+            await bom_check(_ENV)
+
+        mock_nvd.assert_called_once()
+        mock_osv.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_no_ecosystem_hint_routes_to_nvd(self, tmp_path, monkeypatch):
+        """BomEntry with no ecosystem or type falls back to NVD keyword search."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": "redis", "version": "7.0.0"}], _ENV)
+        mock_osv = AsyncMock(return_value=[])
+        mock_nvd = AsyncMock(return_value=[])
+        with (
+            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+        ):
+            await bom_check(_ENV)
+
+        mock_nvd.assert_called_once()
+        mock_osv.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_multiple_components_queried(self, tmp_path, monkeypatch):

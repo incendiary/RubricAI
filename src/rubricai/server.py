@@ -174,12 +174,34 @@ def bom_update(
                     ``version`` (str). Optional: ``type``, ``vendor``, ``notes``.
         environment_name: Target environment (same as used in env_read).
 
+    The ``type`` field doubles as an ecosystem hint for the CVE lookup engine.
+    Setting ``type`` to a package-manager name routes lookups through OSV, which
+    uses developer-native package names. Without an ecosystem hint the lookup falls
+    back to NVD keyword search with automatic name normalisation.
+
+    **Ecosystem hints** (``type`` or ``ecosystem`` field): ``"maven"``, ``"pypi"``,
+    ``"npm"``, ``"nuget"``, ``"go"``, ``"ruby"``, ``"rust"``, ``"debian"``,
+    ``"ubuntu"``, ``"alpine"``, etc.
+
+    **Maven note**: OSV requires the full ``groupId:artifactId`` coordinate.
+    Use ``"org.apache.logging.log4j:log4j-core"`` not ``"log4j-core"`` for Maven
+    packages. Bare artifact IDs automatically fall back to NVD normalisation.
+
     Example::
 
         bom_update([
-            {"name": "nginx", "version": "1.24.0", "type": "service"},
-            {"name": "postgresql", "version": "15.2", "vendor": "PostgreSQL"},
-            {"name": "openssl", "version": "3.1.4", "type": "library"},
+            # Maven — full coordinate (groupId:artifactId) for OSV precision
+            {
+                "name": "org.apache.logging.log4j:log4j-core",
+                "version": "2.14.0",
+                "type": "maven",
+            },
+            # PyPI / npm / Go — just the package name works
+            {"name": "requests",  "version": "2.28.0", "type": "pypi"},
+            {"name": "express",   "version": "4.18.0", "type": "npm"},
+            # No ecosystem hint → NVD keyword search with name normalisation
+            {"name": "openssl",   "version": "3.1.4"},
+            {"name": "nginx",     "version": "1.24.0"},
         ])
     """
     return _bom_update(components, environment_name)
