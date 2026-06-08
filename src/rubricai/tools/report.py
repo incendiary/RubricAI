@@ -1,6 +1,8 @@
 """report.generate MCP tool — produces markdown + JSON report cards."""
 
+import base64
 import json
+import mimetypes
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -48,18 +50,42 @@ def _render_markdown(
     )
 
 
+def _prepare_appendix_items(evidence: list[EvidenceItem]) -> list[dict[str, Any]]:
+    """Pre-process evidence items for the PDF appendix template.
+
+    Base64-encodes any referenced files that exist on disk so they can be
+    embedded directly as data URIs in the HTML without external dependencies.
+    """
+    items: list[dict[str, Any]] = []
+    for e in evidence:
+        item = e.model_dump(mode="json")
+        if e.file_path:
+            p = Path(e.file_path)
+            if p.exists():
+                mime, _ = mimetypes.guess_type(str(p))
+                mime = mime or "application/octet-stream"
+                encoded = base64.b64encode(p.read_bytes()).decode()
+                item["embedded_data"] = f"data:{mime};base64,{encoded}"
+        items.append(item)
+    return items
+
+
 def _render_html_card(
     finding: Finding,
     intel: IntelResult,
     assessment: Assessment,
     evidence: list[EvidenceItem],
+    include_appendix: bool = False,
 ) -> str:
     template = _jinja_env().get_template("report.card.html.j2")
+    appendix_items = _prepare_appendix_items(evidence) if include_appendix else []
     return template.render(
         finding=finding,
         intel=intel,
         assessment=assessment,
         evidence=evidence,
+        include_appendix=include_appendix,
+        appendix_items=appendix_items,
         generated_at=datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
     )
 
@@ -70,6 +96,7 @@ def report_generate(
     assessment: dict[str, Any],
     formats: list[str] | None = None,
     evidence: list[dict[str, Any]] | None = None,
+    include_evidence_appendix: bool = False,
 ) -> dict[str, Any]:
     """Generate and persist a standardised report card.
 
@@ -82,6 +109,10 @@ def report_generate(
                   claim, supporting content, and whether the AI assessed it
                   as verified. Stored in the JSON report and rendered in the
                   markdown Evidence section.
+        include_evidence_appendix: When True and ``"pdf"`` is in formats,
+                  appends an evidence appendix to the PDF. Evidence items
+                  with a valid ``file_path`` have the file embedded as a
+                  base64 data URI (images are displayed inline).
 
     Returns:
         Dict with ``report_markdown``, ``report_json``, ``saved_to``, and
@@ -129,7 +160,9 @@ def report_generate(
     if "pdf" in requested:
         from weasyprint import HTML  # noqa: PLC0415
 
-        html = _render_html_card(f, i, a, ev)
+        html = _render_html_card(
+            f, i, a, ev, include_appendix=include_evidence_appendix
+        )
         pdf_bytes = HTML(string=html).write_pdf()
         pdf_path = report_dir / f"{base_name}.pdf"
         pdf_path.write_bytes(pdf_bytes)

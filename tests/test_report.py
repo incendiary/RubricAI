@@ -145,6 +145,95 @@ class TestReportGenerate:
         assert "report_pdf_path" in result
         assert any(p.endswith(".pdf") for p in result["saved_to"])
 
+    def test_pdf_appendix_skipped_when_flag_false(self, tmp_path, monkeypatch):
+        """include_evidence_appendix=False (default) renders no appendix section."""
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        evidence = [
+            {
+                "claim": "WAF rule blocks exploit",
+                "type": "waf_config",
+                "content": "RULE 1234: DROP",
+                "verified": True,
+            }
+        ]
+        from src.rubricai.schemas.assessment import Assessment
+        from src.rubricai.schemas.evidence import EvidenceItem
+        from src.rubricai.schemas.finding import Finding
+        from src.rubricai.schemas.intel import IntelResult
+        from src.rubricai.tools.report import _render_html_card
+
+        f = Finding.model_validate(_finding_dict())
+        i = IntelResult.model_validate(
+            {k: v for k, v in _intel_dict().items() if k != "derived_finding_context"}
+        )
+        a = Assessment.model_validate(_assessment_dict())
+        ev = [EvidenceItem.model_validate(e) for e in evidence]
+
+        html = _render_html_card(f, i, a, ev, include_appendix=False)
+        assert "Evidence Appendix" not in html
+
+    def test_pdf_appendix_contains_evidence_content(self, tmp_path, monkeypatch):
+        """include_evidence_appendix=True renders evidence content in appendix."""
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        from src.rubricai.schemas.assessment import Assessment
+        from src.rubricai.schemas.evidence import EvidenceItem
+        from src.rubricai.schemas.finding import Finding
+        from src.rubricai.schemas.intel import IntelResult
+        from src.rubricai.tools.report import _render_html_card
+
+        f = Finding.model_validate(_finding_dict())
+        i = IntelResult.model_validate(
+            {k: v for k, v in _intel_dict().items() if k != "derived_finding_context"}
+        )
+        a = Assessment.model_validate(_assessment_dict())
+        ev = [
+            EvidenceItem.model_validate(
+                {
+                    "claim": "Firewall blocks port 8080",
+                    "type": "firewall_policy",
+                    "content": "DENY tcp any eq 8080",
+                    "verified": True,
+                }
+            )
+        ]
+
+        html = _render_html_card(f, i, a, ev, include_appendix=True)
+        assert "Evidence Appendix" in html
+        assert "Firewall blocks port 8080" in html
+        assert "DENY tcp any eq 8080" in html
+
+    def test_pdf_appendix_embeds_file_as_data_uri(self, tmp_path, monkeypatch):
+        """Evidence items with a valid file_path are embedded as base64 data URIs."""
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        # Write a small fake "screenshot" file
+        fake_png = tmp_path / "screenshot.png"
+        fake_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)  # PNG header stub
+
+        from src.rubricai.schemas.assessment import Assessment
+        from src.rubricai.schemas.evidence import EvidenceItem
+        from src.rubricai.schemas.finding import Finding
+        from src.rubricai.schemas.intel import IntelResult
+        from src.rubricai.tools.report import _render_html_card
+
+        f = Finding.model_validate(_finding_dict())
+        i = IntelResult.model_validate(
+            {k: v for k, v in _intel_dict().items() if k != "derived_finding_context"}
+        )
+        a = Assessment.model_validate(_assessment_dict())
+        ev = [
+            EvidenceItem.model_validate(
+                {
+                    "claim": "Screenshot of patched system",
+                    "type": "screenshot",
+                    "verified": True,
+                    "file_path": str(fake_png),
+                }
+            )
+        ]
+
+        html = _render_html_card(f, i, a, ev, include_appendix=True)
+        assert "data:image/png;base64," in html
+
 
 class TestPolicyGet:
     def test_returns_policy_version(self):

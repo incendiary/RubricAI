@@ -193,6 +193,17 @@ def test_evidence_item_invalid_type():
         EvidenceItem(claim="x", type="invalid_type")
 
 
+def test_evidence_item_accepts_file_path():
+    e = EvidenceItem(
+        claim="Screenshot of patched system",
+        type="screenshot",
+        file_path="/tmp/screenshot.png",
+        verified=True,
+    )
+    assert e.file_path == "/tmp/screenshot.png"
+    assert e.type == "screenshot"
+
+
 # ---------------------------------------------------------------------------
 # report_generate with evidence
 # ---------------------------------------------------------------------------

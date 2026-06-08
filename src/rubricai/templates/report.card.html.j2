@@ -320,5 +320,35 @@
   </div>
 
 </div><!-- /card -->
+
+{% if include_appendix and appendix_items %}
+<div style="page-break-before:always; padding:20px 24px; font-family:Arial,sans-serif; font-size:10px; color:#222;">
+  <div style="font-size:13px; font-weight:700; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #333;">
+    Evidence Appendix — {{ finding.id }}
+  </div>
+  {% for item in appendix_items %}
+  <div style="margin-bottom:18px; page-break-inside:avoid; border-left:3px solid {% if item.verified %}#27ae60{% else %}#c0392b{% endif %}; padding-left:10px;">
+    <div style="font-weight:700; font-size:11px; margin-bottom:2px;">
+      {{ loop.index }}. {{ item.claim }}
+    </div>
+    <div style="font-size:8.5px; color:#888; margin-bottom:5px;">
+      {{ item.type }} · {% if item.verified %}✅ Verified{% else %}❌ Unverified{% endif %}
+    </div>
+    {% if item.content %}
+    <pre style="background:#f5f5f5; border:1px solid #ddd; padding:6px 8px; font-size:8px; white-space:pre-wrap; margin:4px 0;">{{ item.content }}</pre>
+    {% endif %}
+    {% if item.analyst_note %}
+    <p style="color:#555; font-style:italic; font-size:8.5px; margin:4px 0;">{{ item.analyst_note }}</p>
+    {% endif %}
+    {% if item.embedded_data %}
+    <img src="{{ item.embedded_data }}" style="max-width:100%; max-height:320px; border:1px solid #ddd; margin-top:6px; display:block;"/>
+    {% endif %}
+  </div>
+  {% endfor %}
+  <div style="font-size:7.5px; color:#aaa; margin-top:16px; border-top:1px solid #eee; padding-top:4px;">
+    {{ assessment.policy_version }} · {{ finding.id }} · {{ generated_at }} · For authorized security team review only
+  </div>
+</div>
+{% endif %}
 </body>
 </html>
