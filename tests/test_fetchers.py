@@ -381,6 +381,18 @@ async def test_nvd_search_empty_results(tmp_path):
     assert results == []
 
 
+async def test_nvd_search_404_returns_empty(tmp_path):
+    """NVD returns 404 for unresolvable keyword queries — should yield [] not raise."""
+    cache = FileCache(tmp_path)
+    client = _mock_client(_mock_response({}, status_code=404))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+    ):
+        results = await nvd_fetcher.search("Ubuntu 20.04.6 LTS", days_back=7)
+    assert results == []
+
+
 async def test_nvd_search_description_truncated(tmp_path):
     """Descriptions longer than 300 chars are truncated."""
     long_desc = "x" * 500
