@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 from .tools.bom import bom_check as _bom_check
@@ -17,6 +18,10 @@ from .tools.intel import lookup as _intel_lookup
 from .tools.policy import policy_get as _policy_get
 from .tools.report import report_generate as _report_generate
 from .tools.scoring import score_evaluate as _score_evaluate
+
+# Load .env before reading any env vars. No-ops if file absent.
+# Does not override vars already set in the process environment.
+load_dotenv()
 
 # Configure logging at server startup.
 # Level: RUBRICAI_LOG_LEVEL env var (default INFO).
