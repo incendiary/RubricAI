@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,9 @@ logging.basicConfig(
 
 mcp = FastMCP("RubricAI")
 
+_CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
+_MAX_CVE_LIST_SIZE = 50
+
 
 @mcp.tool()
 async def intel_lookup(
@@ -49,10 +53,19 @@ async def intel_lookup(
     """Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs.
 
     Args:
-        cves: List of CVE IDs, e.g. ["CVE-2024-1234"].
+        cves: List of CVE IDs, e.g. ["CVE-2024-1234"]. Max 50 per request.
         include: Subset of signal types to fetch. Options: kev, epss, cvss, poc, vendor.
                  Omit to fetch all.
     """
+    if len(cves) > _MAX_CVE_LIST_SIZE:
+        raise ValueError(
+            f"Too many CVEs ({len(cves)}). Maximum is {_MAX_CVE_LIST_SIZE} per request."
+        )
+    invalid = [c for c in cves if not _CVE_RE.match(c)]
+    if invalid:
+        raise ValueError(
+            f"Invalid CVE ID format: {invalid[:5]}. Expected CVE-YYYY-NNNNN."
+        )
     return await _intel_lookup(cves, include)
 
 
