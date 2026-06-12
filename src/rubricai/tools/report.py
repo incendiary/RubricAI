@@ -55,13 +55,29 @@ def _prepare_appendix_items(evidence: list[EvidenceItem]) -> list[dict[str, Any]
 
     Base64-encodes any referenced files that exist on disk so they can be
     embedded directly as data URIs in the HTML without external dependencies.
+
+    Security: Only files within RUBRICAI_REPORT_DIR or RUBRICAI_ENV_DIR are
+    permitted. Symlinks are resolved before the check to prevent escapes.
     """
+    allowed_roots = [_report_dir().resolve()]
+    env_dir = os.getenv(
+        "RUBRICAI_ENV_DIR",
+        str(Path.home() / ".local" / "share" / "rubricai" / "environments"),
+    )
+    allowed_roots.append(Path(env_dir).resolve())
+
     items: list[dict[str, Any]] = []
     for e in evidence:
         item = e.model_dump(mode="json")
         if e.file_path:
-            p = Path(e.file_path)
-            if p.exists():
+            p = Path(e.file_path).resolve()  # resolve symlinks
+            if not any(
+                p == root or root in p.parents for root in allowed_roots
+            ):
+                item["embedded_data_error"] = (
+                    "Rejected: file_path outside allowed directories"
+                )
+            elif p.exists():
                 mime, _ = mimetypes.guess_type(str(p))
                 mime = mime or "application/octet-stream"
                 encoded = base64.b64encode(p.read_bytes()).decode()

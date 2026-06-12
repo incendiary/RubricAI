@@ -234,8 +234,59 @@ class TestReportGenerate:
         html = _render_html_card(f, i, a, ev, include_appendix=True)
         assert "data:image/png;base64," in html
 
+    def test_pdf_appendix_rejects_path_traversal(self, tmp_path, monkeypatch):
+        """Evidence file_path outside allowed directories is rejected."""
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path / "envs"))
 
-class TestPolicyGet:
+        from src.rubricai.schemas.assessment import Assessment
+        from src.rubricai.schemas.evidence import EvidenceItem
+        from src.rubricai.schemas.finding import Finding
+        from src.rubricai.schemas.intel import IntelResult
+        from src.rubricai.tools.report import _prepare_appendix_items
+
+        ev = [
+            EvidenceItem.model_validate(
+                {
+                    "claim": "Malicious path",
+                    "type": "screenshot",
+                    "verified": False,
+                    "file_path": "/etc/passwd",
+                }
+            )
+        ]
+
+        items = _prepare_appendix_items(ev)
+        assert "embedded_data" not in items[0]
+        assert "Rejected" in items[0].get("embedded_data_error", "")
+
+    def test_pdf_appendix_rejects_symlink_escape(self, tmp_path, monkeypatch):
+        """Symlinks that resolve outside allowed dirs are rejected."""
+        monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path / "reports"))
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path / "envs"))
+        (tmp_path / "reports").mkdir()
+
+        # Create a symlink inside report dir that points outside
+        escape_link = tmp_path / "reports" / "escape.txt"
+        escape_link.symlink_to("/etc/hostname")
+
+        from src.rubricai.schemas.evidence import EvidenceItem
+        from src.rubricai.tools.report import _prepare_appendix_items
+
+        ev = [
+            EvidenceItem.model_validate(
+                {
+                    "claim": "Symlink escape",
+                    "type": "other",
+                    "verified": False,
+                    "file_path": str(escape_link),
+                }
+            )
+        ]
+
+        items = _prepare_appendix_items(ev)
+        assert "embedded_data" not in items[0]
+        assert "Rejected" in items[0].get("embedded_data_error", "")
     def test_returns_policy_version(self):
         p = policy_get()
         assert "policy_version" in p
