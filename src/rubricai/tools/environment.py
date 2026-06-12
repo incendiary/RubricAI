@@ -25,13 +25,6 @@ def _environments_dir() -> Path:
     return d
 
 
-def _env_dir(environment_name: str) -> Path:
-    """Return the directory for a named environment, creating it if needed."""
-    d = _environments_dir() / environment_name
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-
 def _validate_env_name(name: str) -> str:
     """Normalise and validate an environment name. Raises ValueError on bad input."""
     name = name.strip().lower().replace(" ", "-").replace("_", "-")
@@ -41,6 +34,17 @@ def _validate_env_name(name: str) -> str:
             "Use lowercase letters, numbers, and hyphens only."
         )
     return name
+
+
+def _env_dir(environment_name: str) -> Path:
+    """Return the directory for a named environment, creating it if needed.
+
+    Always validates the name to prevent path traversal, regardless of caller.
+    """
+    safe_name = _validate_env_name(environment_name)
+    d = _environments_dir() / safe_name
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
 
 def _current_version(env_dir: Path) -> int:
