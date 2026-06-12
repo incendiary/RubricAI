@@ -28,10 +28,15 @@ load_dotenv()
 # Level: RUBRICAI_LOG_LEVEL env var (default INFO).
 # Output: ~/.local/share/rubricai/rubricai.log + stderr.
 _log_level = os.getenv("RUBRICAI_LOG_LEVEL", "INFO").upper()
-_log_path = (
-    Path(os.getenv("RUBRICAI_LOG_DIR", str(Path.home() / ".local/share/rubricai")))
-    / "rubricai.log"
-)
+_default_log_dir = Path.home() / ".local" / "share" / "rubricai"
+_log_dir_env = os.getenv("RUBRICAI_LOG_DIR", str(_default_log_dir))
+_log_dir = Path(_log_dir_env).resolve()
+
+# Validate log directory: must be absolute and not contain traversal
+if ".." in _log_dir.parts:
+    _log_dir = _default_log_dir
+
+_log_path = _log_dir / "rubricai.log"
 _log_path.parent.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
     level=_log_level,
