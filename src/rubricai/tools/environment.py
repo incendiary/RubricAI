@@ -1,5 +1,6 @@
 """env_list / env_read / env_write MCP tools — multi-environment versioned state."""
 
+import fcntl
 import json
 import os
 import re
@@ -132,20 +133,29 @@ def env_write(state: dict[str, Any], environment_name: str) -> dict[str, Any]:
     """
     name = _validate_env_name(environment_name)
     d = _env_dir(name)
-    next_ver = _current_version(d) + 1
 
-    validated = EnvironmentState.model_validate(
-        {
-            **{k: v for k, v in state.items() if k != "environment_name"},
-            "version": next_ver,
-            "updated_at": datetime.now(tz=UTC).isoformat(),
-        }
-    )
+    # Exclusive file lock prevents TOCTOU race on concurrent version increment
+    lock_path = d / ".write.lock"
+    lock_path.touch(exist_ok=True)
+    with open(lock_path, "r") as lock_fd:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        try:
+            next_ver = _current_version(d) + 1
 
-    versioned_path = d / f"state_v{next_ver:03d}.json"
-    content = json.dumps(validated.model_dump(mode="json"), indent=2)
-    versioned_path.write_text(content, encoding="utf-8")
-    (d / "state_latest.json").write_text(content, encoding="utf-8")
+            validated = EnvironmentState.model_validate(
+                {
+                    **{k: v for k, v in state.items() if k != "environment_name"},
+                    "version": next_ver,
+                    "updated_at": datetime.now(tz=UTC).isoformat(),
+                }
+            )
+
+            versioned_path = d / f"state_v{next_ver:03d}.json"
+            content = json.dumps(validated.model_dump(mode="json"), indent=2)
+            versioned_path.write_text(content, encoding="utf-8")
+            (d / "state_latest.json").write_text(content, encoding="utf-8")
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
 
     return {
         "version": next_ver,
