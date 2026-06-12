@@ -8,7 +8,10 @@ services:
       - RUBRICAI_REPORT_DIR=/reports
       - RUBRICAI_ENV_DIR=/state
       - NVD_API_KEY=${NVD_API_KEY:-}
+      - RUBRICAI_API_KEY=${RUBRICAI_API_KEY:-}
     volumes:
+      # Host-mounted paths are writable by the container's rubricai user.
+      # Do not mount sensitive host directories here.
       - ./reports:/reports
       - ./.cache:/app/.cache
       - rubricai_state:/state

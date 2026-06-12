@@ -629,15 +629,15 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | [#58](https://github.com/incendiary/RubricAI/issues/58) | ✅ Done | Bug: NVD search() raises on 404 — bom_check aborts for unresolvable keywords (v0.8.2) |
 | [#59](https://github.com/incendiary/RubricAI/issues/59) | ✅ Done | Bug: bom_check uses name+version keyword — NVD AND logic returns zero results for known-vulnerable components (v0.8.3) |
 | — | ✅ Done | BOM name resolution — OSV translation layer (PyPI/npm/Go/Maven) + NVD keyword normalisation fallback; users never need to know NVD naming conventions (v0.8.4) |
-| — | 🔧 In Progress | Security: XSS — enable Jinja2 HTML autoescape, mark safe only constructed data URIs (v0.8.6) |
-| — | ⬜ Open | Security: Arbitrary file read — path validation on evidence file_path |
-| — | ⬜ Open | Security: Optional API key auth + TLS on SSE transport |
-| — | ⬜ Open | Security: Path traversal — validate environment_name in BOM tools + cache namespace |
-| — | ⬜ Open | Security: TOCTOU race — file locking on state versioning |
-| — | ⬜ Open | Security: HTTP error handling — catch exceptions in fetchers, validate timeout env var |
-| — | ⬜ Open | Security: Dockerfile hardening — non-root user, remove dev deps, no error suppression |
-| — | ⬜ Open | Security: Schema + validation — remove extra=allow, CVE format + list-size limits |
-| — | ⬜ Open | Security: Log path validation + volume security docs |
+| [#73](https://github.com/incendiary/RubricAI/issues/73) | ✅ Done | Security: XSS — enable Jinja2 HTML autoescape, mark safe only constructed data URIs (v0.8.6) |
+| [#74](https://github.com/incendiary/RubricAI/issues/74) | ✅ Done | Security: Arbitrary file read — path validation on evidence file_path (v0.8.7) |
+| [#75](https://github.com/incendiary/RubricAI/issues/75) | ✅ Done | Security: Optional API key auth + TLS on SSE transport (v0.8.8) |
+| [#76](https://github.com/incendiary/RubricAI/issues/76) | ✅ Done | Security: Path traversal — validate environment_name in BOM tools + cache namespace (v0.8.9) |
+| [#77](https://github.com/incendiary/RubricAI/issues/77) | ✅ Done | Security: TOCTOU race — file locking on state versioning (v0.8.10) |
+| [#78](https://github.com/incendiary/RubricAI/issues/78) | ✅ Done | Security: HTTP error handling — catch exceptions in fetchers, validate timeout env var (v0.8.11) |
+| [#79](https://github.com/incendiary/RubricAI/issues/79) | ✅ Done | Security: Dockerfile hardening — non-root user, remove dev deps, no error suppression (v0.8.12) |
+| [#80](https://github.com/incendiary/RubricAI/issues/80) | ✅ Done | Security: Schema + validation — remove extra=allow, CVE format + list-size limits (v0.8.13) |
+| — | ✅ Done | Security: Log path validation + volume security docs (v0.8.14) |
 
 ---
 
