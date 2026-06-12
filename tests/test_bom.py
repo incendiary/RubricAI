@@ -272,3 +272,16 @@ class TestBomCheck:
             await bom_check(_ENV)
 
         assert mock_search.call_count == 3
+
+
+class TestBomPathTraversal:
+    def test_bom_update_rejects_traversal_name(self, tmp_path, monkeypatch):
+        """Path traversal in environment_name is rejected by _env_dir validation."""
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        with pytest.raises(ValueError, match="Invalid environment name"):
+            bom_update([{"name": "nginx", "version": "1.0"}], "../../etc")
+
+    def test_bom_update_rejects_slash_in_name(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        with pytest.raises(ValueError, match="Invalid environment name"):
+            bom_update([{"name": "nginx", "version": "1.0"}], "foo/bar")
