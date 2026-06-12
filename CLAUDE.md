@@ -116,8 +116,23 @@ Tag a release at each milestone:
 gh release create v0.1.0 --title "Secret scan + dependency audit clean" --notes "Priority Zero and Step 1 complete"
 gh release create v0.2.0 --title "Code quality pass" --notes "Step 2 complete"
 gh release create v0.3.0 --title "Tooling configured" --notes "Step 3 complete"
+gh release create v0.9.0 --title "Security hardening complete" --notes "All 17 findings remediated (PRs #73-#81)"
 gh release create v1.0.0 --title "Public release" --notes "All steps complete, branch protection enabled"
 ```
+
+---
+
+## Security Remediation Way of Working
+
+When performing security fixes:
+1. **Spec first** — use karpathy-spec to break into agile specs with testable "done when"
+2. **One PR per logical group** — related findings can share a PR, but each PR is independently reviewable
+3. **Point releases per PR** — each merged fix bumps Major.Minor.Point (e.g. 0.8.6, 0.8.7...)
+4. **Minor release on completion** — all security work done = minor bump (e.g. 0.9.0)
+5. **Test before commit** — run affected tests, verify no regressions
+6. **README roadmap tracking** — every PR gets a row in the Roadmap table with status
+7. **Verify after** — invoke karpathy-verify: run full suite, check coverage, confirm no new findings
+8. **PR format** — title: `fix: <description> (vX.Y.Z)`, body: Summary + Findings table + Test plan
 
 ---
 
