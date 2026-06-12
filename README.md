@@ -153,11 +153,17 @@ There is no slash command — the system prompt is the trigger. Every conversati
 ```bash
 cp .env.example .env
 # Edit .env: set NVD_API_KEY if you have one
+# Optional: set RUBRICAI_API_KEY for Bearer token auth
+# Optional: set RUBRICAI_TLS_CERT and RUBRICAI_TLS_KEY for HTTPS
 
 docker compose up --build
 ```
 
 Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host.
+
+> **Security note:** The container runs as a non-root user (`rubricai`). Set
+> `RUBRICAI_API_KEY` in production to require Bearer token authentication on all
+> HTTP requests.
 
 ### OpenAI (GPT-4o, o3, Agents SDK)
 
