@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "RubricAI"
-version = "0.8.7"
+version = "0.8.8"
 description = "Vulnerability prioritisation MCP server — deterministic CHML scoring with CISA KEV, EPSS, and NVD intel"
 readme = "README.md"
 requires-python = ">=3.11"
