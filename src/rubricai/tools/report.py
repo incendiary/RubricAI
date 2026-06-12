@@ -28,7 +28,7 @@ def _report_dir() -> Path:
 def _jinja_env() -> Environment:
     return Environment(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
-        autoescape=select_autoescape([]),
+        autoescape=select_autoescape(["html", "htm"]),
         trim_blocks=True,
         lstrip_blocks=True,
     )
