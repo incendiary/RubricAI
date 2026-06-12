@@ -13,8 +13,19 @@ class FileCache:
         self._dir = Path(cache_dir)
         self._dir.mkdir(parents=True, exist_ok=True)
 
+    @staticmethod
+    def _sanitize_namespace(namespace: str) -> str:
+        """Strip path separators and traversal sequences from namespace."""
+        # Remove any path separator or traversal attempt
+        sanitized = namespace.replace("/", "_").replace("\\", "_").replace("..", "")
+        sanitized = sanitized.replace("\x00", "")  # null bytes
+        if not sanitized:
+            raise ValueError("Cache namespace cannot be empty after sanitization")
+        return sanitized
+
     def _path(self, namespace: str) -> Path:
-        return self._dir / f"{namespace}.json"
+        safe_ns = self._sanitize_namespace(namespace)
+        return self._dir / f"{safe_ns}.json"
 
     def _load(self, namespace: str) -> dict:
         p = self._path(namespace)
