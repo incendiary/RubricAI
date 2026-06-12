@@ -4,13 +4,20 @@ WORKDIR /app
 
 # Install dependencies first (layer cache)
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e ".[dev]" 2>/dev/null || true
+RUN pip install --no-cache-dir -e .
 
 # Copy source after dep layer is cached
 COPY src/ ./src/
 
 # Install the package itself
 RUN pip install --no-cache-dir -e .
+
+# Create non-root user and set up directories
+RUN groupadd -r rubricai && useradd -r -g rubricai -d /app rubricai \
+    && mkdir -p /reports /state \
+    && chown -R rubricai:rubricai /app /reports /state
+
+USER rubricai
 
 # SSE transport for remote/Docker deployment
 ENV RUBRICAI_TRANSPORT=sse
