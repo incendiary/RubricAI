@@ -24,7 +24,7 @@ class BomEntry(BaseModel):
 
 
 class EnvironmentState(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     schema_version: str = "1"
     version: int = 1
