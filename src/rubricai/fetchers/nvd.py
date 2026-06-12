@@ -15,7 +15,13 @@ _API_URL = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 _NS = "nvd"
 _TTL_HOURS = 24
 _SEARCH_TTL_HOURS = 4  # BOM checks are "what's new" — shorter TTL
-_HTTP_TIMEOUT = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
+
+
+def _timeout() -> int:
+    try:
+        return int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
+    except (ValueError, TypeError):
+        return 30
 
 _cache = FileCache()
 
@@ -130,7 +136,7 @@ async def _search_single(
     start_index = 0
     page_size = 100
 
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_timeout()) as client:
         while True:
             resp = await client.get(
                 _API_URL,
@@ -172,7 +178,7 @@ async def fetch(cve_id: str) -> dict | None:
     if cached is not None:
         return cached
 
-    async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+    async with httpx.AsyncClient(timeout=_timeout()) as client:
         resp = await client.get(
             _API_URL,
             params={"cveId": cve_id},
