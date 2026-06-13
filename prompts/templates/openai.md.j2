@@ -75,11 +75,28 @@ Export the tool schemas and call the Python functions directly:
 from src.rubricai.tools.intel import lookup
 from src.rubricai.tools.scoring import score_evaluate
 from src.rubricai.tools.report import report_generate
-from src.rubricai.tools.environment import env_list, env_read, env_write
+from src.rubricai.tools.environment import env_list, env_read, env_write, env_migrate_legacy
+from src.rubricai.tools.policy import policy_get
+from src.rubricai.tools.bom import bom_update, bom_check
 
 # These are plain async/sync Python functions — call them from your own
 # tool-calling loop using the OpenAI Responses or Chat Completions API.
 ```
+
+### Available Tools (10)
+
+| Tool | Description |
+|------|-------------|
+| `intel_lookup` | Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs. |
+| `score_evaluate` | Apply the CHML scoring policy to produce a lane, target, and rationale. |
+| `report_generate` | Generate a standardised report card (markdown + JSON + optional PDF) and persist to disk. |
+| `env_list` | List all named environments stored on disk. Call at session start. |
+| `env_read` | Read the current state for a named environment. |
+| `env_write` | Write an updated state for a named environment. |
+| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment. |
+| `policy_get` | Return the current CHML policy definition for transparency and auditability. |
+| `bom_update` | Store or replace the Bill of Materials for a named environment. |
+| `bom_check` | Check all BOM components for CVEs published or modified recently. |
 
 ### Notes for OpenAI models
 
