@@ -2,11 +2,30 @@
 
 ---
 
-## Gemini Configuration (stub)
+## Gemini Configuration
 
 Gemini MCP client configuration will vary depending on the integration method.
 Refer to the Gemini MCP documentation for how to register external tool servers
 and how to provide system instructions.
 
 The workflow content above should be placed in your system instruction.
-Tool names to register: `intel_lookup`, `score_evaluate`, `report_generate`, `policy_get`.
+
+### Available Tools (10)
+
+| Tool | Description |
+|------|-------------|
+| `intel_lookup` | Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs. |
+| `score_evaluate` | Apply the CHML scoring policy to produce a lane, target, and rationale. |
+| `report_generate` | Generate a standardised report card (markdown + JSON + optional PDF) and persist to disk. |
+| `env_list` | List all named environments stored on disk. Call at session start. |
+| `env_read` | Read the current state for a named environment. |
+| `env_write` | Write an updated state for a named environment. |
+| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment. |
+| `policy_get` | Return the current CHML policy definition for transparency and auditability. |
+| `bom_update` | Store or replace the Bill of Materials for a named environment. |
+| `bom_check` | Check all BOM components for CVEs published or modified recently. |
+
+### Connection
+
+- **stdio**: `python -m src.main` with `RUBRICAI_TRANSPORT=stdio`
+- **SSE/HTTP**: `RUBRICAI_TRANSPORT=sse`, server listens on port 8000
