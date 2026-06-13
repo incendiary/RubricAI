@@ -1,6 +1,6 @@
 """env_list / env_read / env_write MCP tools — multi-environment versioned state."""
 
-import fcntl
+import fcntl  # Unix only — Windows deployments must use Docker (Linux container)
 import json
 import os
 import re

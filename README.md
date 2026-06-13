@@ -72,7 +72,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.8.4 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v0.9.4 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -544,12 +544,16 @@ Evidence type values: `firewall_policy`, `network_config`, `acl_rule`, `waf_conf
 
 | Tool | Description |
 |------|-------------|
-| `env_read` | Read the current environment state (or empty template if none exists) |
-| `env_write` | Write a versioned update to the environment state |
 | `intel_lookup` | Fetch KEV, EPSS, CVSS, PoC, and vendor signals for one or more CVEs |
 | `score_evaluate` | Apply CHML policy and return lane, target, rationale, evidence gaps |
-| `report_generate` | Produce markdown + JSON report card with optional evidence, persist to disk |
+| `report_generate` | Produce markdown + JSON + optional PDF report card, persist to disk |
+| `env_list` | List all named environments stored on disk (call at session start) |
+| `env_read` | Read the current versioned state for a named environment |
+| `env_write` | Write a versioned update to the environment state |
+| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment |
 | `policy_get` | Return the current CHML policy definition for auditability |
+| `bom_update` | Store or replace the Bill of Materials for a named environment |
+| `bom_check` | Check all BOM components for CVEs published or modified recently |
 
 ---
 
@@ -594,7 +598,13 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | `RUBRICAI_REPORT_DIR` | `~/.local/share/rubricai/reports` | Directory for persisted report cards |
 | `RUBRICAI_ENV_DIR` | `~/.local/share/rubricai` | Directory for versioned environment state files |
 | `RUBRICAI_HTTP_TIMEOUT` | `30` | HTTP timeout (seconds) for CISA KEV, EPSS, and NVD fetches |
+| `RUBRICAI_LOG_LEVEL` | `INFO` | Log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `RUBRICAI_LOG_FORMAT` | `text` | Log format (`text` for human-readable, `json` for structured) |
+| `RUBRICAI_LOG_DIR` | `~/.local/share/rubricai` | Directory for log file (`rubricai.log`) |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
+| `RUBRICAI_API_KEY` | *(empty)* | Optional — require Bearer token auth on SSE/HTTP transport |
+| `RUBRICAI_TLS_CERT` | *(empty)* | Path to PEM certificate file for HTTPS (SSE transport) |
+| `RUBRICAI_TLS_KEY` | *(empty)* | Path to PEM private key file (required with TLS_CERT) |
 | `RUBRICAI_CRITICAL_DAYS` | `3` | Override Critical lane SLA (days, or `patch_train`) |
 | `RUBRICAI_HIGH_DAYS` | `7` | Override High lane SLA (days, or `patch_train`) |
 | `RUBRICAI_MEDIUM_DAYS` | `patch_train` | Override Medium lane SLA (days, or `patch_train`) |
@@ -637,8 +647,11 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | — | ✅ Done | Security: Log path validation + volume security docs (v0.8.14) |
 | — | ✅ Done | **v0.9.0 — Security hardening complete** — all 17 findings remediated (PRs #73–#81), stale branches pruned |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
-| [#51](https://github.com/incendiary/RubricAI/issues/51) | ⬜ Open | End-to-end workflow test — full interview cycle in a single test |
-| [#52](https://github.com/incendiary/RubricAI/issues/52) | ⬜ Open | server.py smoke test — import and tool registration count |
+| [#51](https://github.com/incendiary/RubricAI/issues/51) | ✅ Done | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
+| [#52](https://github.com/incendiary/RubricAI/issues/52) | ✅ Done | server.py smoke test — import and tool registration count (v0.9.0) |
+| [#82](https://github.com/incendiary/RubricAI/pull/82) | ✅ Done | HTTP retry with exponential backoff + cache lazy eviction (v0.9.1) |
+| [#83](https://github.com/incendiary/RubricAI/pull/83) | ✅ Done | Health endpoint, structured JSON logging, --verbose CLI flag (v0.9.2) |
+| [#84](https://github.com/incendiary/RubricAI/pull/84) | ✅ Done | Prompt templates updated with complete 10-tool reference (v0.9.3) |
 
 > This project was uplifted for public release with the assistance of Claude (Anthropic).
 > Things should work, but some paths may not have been fully re-tested. PRs and fixes welcome.
