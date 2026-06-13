@@ -72,7 +72,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v0.9.5 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v1.0.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -652,6 +652,9 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | [#82](https://github.com/incendiary/RubricAI/pull/82) | ✅ Done | HTTP retry with exponential backoff + cache lazy eviction (v0.9.1) |
 | [#83](https://github.com/incendiary/RubricAI/pull/83) | ✅ Done | Health endpoint, structured JSON logging, --verbose CLI flag (v0.9.2) |
 | [#84](https://github.com/incendiary/RubricAI/pull/84) | ✅ Done | Prompt templates updated with complete 10-tool reference (v0.9.3) |
+| [#85](https://github.com/incendiary/RubricAI/pull/85) | ✅ Done | README refresh — 10-tool table, env vars, version sync test (v0.9.4) |
+| [#86](https://github.com/incendiary/RubricAI/pull/86) | ✅ Done | Auth middleware test coverage (v0.9.5) |
+| — | ✅ Done | **v1.0.0 — Production-ready release** — retry, observability, docs, full test coverage |
 
 > This project was uplifted for public release with the assistance of Claude (Anthropic).
 > Things should work, but some paths may not have been fully re-tested. PRs and fixes welcome.
