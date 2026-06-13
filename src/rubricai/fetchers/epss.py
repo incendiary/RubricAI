@@ -6,6 +6,7 @@ import os
 import httpx
 
 from ..cache import FileCache
+from .retry import fetch_with_retry
 
 _API_URL = "https://api.first.org/data/v1/epss"
 _NS = "epss"
@@ -31,7 +32,7 @@ async def fetch(cve_id: str) -> dict | None:
 
     try:
         async with httpx.AsyncClient(timeout=_timeout()) as client:
-            resp = await client.get(_API_URL, params={"cve": cve_id})
+            resp = await fetch_with_retry(client, "GET", _API_URL, params={"cve": cve_id})
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as exc:

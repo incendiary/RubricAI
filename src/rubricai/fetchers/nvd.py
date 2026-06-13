@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 
 from ..cache import FileCache
+from .retry import fetch_with_retry
 
 _logger = logging.getLogger(__name__)
 
@@ -138,7 +139,9 @@ async def _search_single(
 
     async with httpx.AsyncClient(timeout=_timeout()) as client:
         while True:
-            resp = await client.get(
+            resp = await fetch_with_retry(
+                client,
+                "GET",
                 _API_URL,
                 params={
                     "keywordSearch": keyword,
@@ -179,7 +182,9 @@ async def fetch(cve_id: str) -> dict | None:
         return cached
 
     async with httpx.AsyncClient(timeout=_timeout()) as client:
-        resp = await client.get(
+        resp = await fetch_with_retry(
+            client,
+            "GET",
             _API_URL,
             params={"cveId": cve_id},
             headers=_headers(),
