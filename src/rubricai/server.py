@@ -26,8 +26,10 @@ load_dotenv()
 
 # Configure logging at server startup.
 # Level: RUBRICAI_LOG_LEVEL env var (default INFO).
+# Format: RUBRICAI_LOG_FORMAT env var (default human-readable; set to "json" for structured).
 # Output: ~/.local/share/rubricai/rubricai.log + stderr.
 _log_level = os.getenv("RUBRICAI_LOG_LEVEL", "INFO").upper()
+_log_format = os.getenv("RUBRICAI_LOG_FORMAT", "text").lower()
 _default_log_dir = Path.home() / ".local" / "share" / "rubricai"
 _log_dir_env = os.getenv("RUBRICAI_LOG_DIR", str(_default_log_dir))
 _log_dir = Path(_log_dir_env).resolve()
@@ -38,14 +40,29 @@ if ".." in _log_dir.parts:
 
 _log_path = _log_dir / "rubricai.log"
 _log_path.parent.mkdir(parents=True, exist_ok=True)
+
+if _log_format == "json":
+    _fmt = '{"time":"%(asctime)s","logger":"%(name)s","level":"%(levelname)s","msg":"%(message)s"}'
+else:
+    _fmt = "%(asctime)s %(name)s %(levelname)s %(message)s"
+
 logging.basicConfig(
     level=_log_level,
-    format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    format=_fmt,
     handlers=[logging.FileHandler(_log_path), logging.StreamHandler()],
     force=True,  # override any root logger config set by FastMCP
 )
 
 mcp = FastMCP("RubricAI")
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health_check(request):
+    """Unauthenticated health check for Docker orchestration."""
+    from starlette.responses import JSONResponse
+
+    return JSONResponse({"status": "ok"})
+
 
 _CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,}$", re.IGNORECASE)
 _MAX_CVE_LIST_SIZE = 50
