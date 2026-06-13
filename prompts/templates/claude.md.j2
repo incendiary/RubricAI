@@ -4,6 +4,22 @@
 
 ## Claude Desktop Configuration
 
+RubricAI exposes **10 MCP tools** — they are auto-discovered by Claude Desktop via the
+MCP connection. No manual tool registration is required.
+
+| Tool | Description |
+|------|-------------|
+| `intel_lookup` | Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs. |
+| `score_evaluate` | Apply the CHML scoring policy to produce a lane, target, and rationale. |
+| `report_generate` | Generate a standardised report card (markdown + JSON + optional PDF) and persist to disk. |
+| `env_list` | List all named environments stored on disk. Call at session start. |
+| `env_read` | Read the current state for a named environment. |
+| `env_write` | Write an updated state for a named environment. |
+| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment. |
+| `policy_get` | Return the current CHML policy definition for transparency and auditability. |
+| `bom_update` | Store or replace the Bill of Materials for a named environment. |
+| `bom_check` | Check all BOM components for CVEs published or modified recently. |
+
 To use RubricAI with Claude Desktop, add the following to your `claude_desktop_config.json`:
 
 **stdio (local install):**
