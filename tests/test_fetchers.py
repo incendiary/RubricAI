@@ -40,6 +40,8 @@ def _mock_response(json_data, status_code=200):
 def _mock_client(response):
     client = AsyncMock()
     client.get = AsyncMock(return_value=response)
+    client.post = AsyncMock(return_value=response)
+    client.request = AsyncMock(return_value=response)
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
     return client
@@ -488,9 +490,10 @@ def test_nvd_normalize_python_prefix():
 
 
 def _osv_mock_client(response):
-    """Build a mock httpx.AsyncClient that supports .post()."""
+    """Build a mock httpx.AsyncClient that supports .post() and .request()."""
     client = AsyncMock()
     client.post = AsyncMock(return_value=response)
+    client.request = AsyncMock(return_value=response)
     client.__aenter__ = AsyncMock(return_value=client)
     client.__aexit__ = AsyncMock(return_value=None)
     return client

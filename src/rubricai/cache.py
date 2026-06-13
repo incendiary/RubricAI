@@ -50,8 +50,11 @@ class FileCache:
 
     def set(self, namespace: str, key: str, value: Any, ttl_hours: float = 24) -> None:
         store = self._load(namespace)
+        # Lazy eviction: prune expired entries on every write to prevent unbounded growth
+        now = time.time()
+        store = {k: v for k, v in store.items() if v.get("expires_at", 0) > now}
         store[key] = {
             "value": value,
-            "expires_at": time.time() + ttl_hours * 3600,
+            "expires_at": now + ttl_hours * 3600,
         }
         self._save(namespace, store)
