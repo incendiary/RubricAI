@@ -22,6 +22,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 
 from ..cache import FileCache
+from .retry import fetch_with_retry
 
 _logger = logging.getLogger(__name__)
 
@@ -130,7 +131,7 @@ async def search(
 
     try:
         async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            resp = await client.post(_API_URL, json=payload)
+            resp = await fetch_with_retry(client, "POST", _API_URL, json=payload)
             if resp.status_code >= 400:
                 _logger.warning(
                     "OSV search HTTP %d for name=%r ecosystem=%r",

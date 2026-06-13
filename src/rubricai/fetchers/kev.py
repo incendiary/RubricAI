@@ -9,6 +9,7 @@ import os
 import httpx
 
 from ..cache import FileCache
+from .retry import fetch_with_retry
 
 _CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 _NS = "kev"
@@ -49,7 +50,7 @@ async def fetch(cve_id: str) -> dict:
 async def _download_and_index() -> dict | None:
     try:
         async with httpx.AsyncClient(timeout=_timeout()) as client:
-            resp = await client.get(_CATALOG_URL)
+            resp = await fetch_with_retry(client, "GET", _CATALOG_URL)
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as exc:
