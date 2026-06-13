@@ -10,12 +10,24 @@ Security (SSE/HTTP transport only):
   - RUBRICAI_TLS_KEY  — path to PEM private key file (required with TLS_CERT)
 """
 
+import argparse
 import os
 
 from rubricai.server import mcp
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="RubricAI MCP server")
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable DEBUG logging (overrides RUBRICAI_LOG_LEVEL)",
+    )
+    args = parser.parse_args()
+
+    if args.verbose:
+        os.environ["RUBRICAI_LOG_LEVEL"] = "DEBUG"
+
     transport = os.getenv("RUBRICAI_TRANSPORT", "stdio")
 
     if transport == "stdio":
