@@ -24,6 +24,7 @@ def _timeout() -> int:
     except (ValueError, TypeError):
         return 30
 
+
 _cache = FileCache()
 
 

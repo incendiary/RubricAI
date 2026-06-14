@@ -5,7 +5,8 @@ Transport is controlled by the RUBRICAI_TRANSPORT environment variable:
   - sse              — for Dockerised / remote HTTP deployment
 
 Security (SSE/HTTP transport only):
-  - RUBRICAI_API_KEY  — if set, requires Authorization: Bearer <key> on all HTTP requests
+  - RUBRICAI_API_KEY  — if set, requires Authorization: Bearer <key>
+    on all HTTP requests
   - RUBRICAI_TLS_CERT — path to PEM certificate file (enables HTTPS)
   - RUBRICAI_TLS_KEY  — path to PEM private key file (required with TLS_CERT)
 """
@@ -19,7 +20,8 @@ from rubricai.server import mcp
 def main() -> None:
     parser = argparse.ArgumentParser(description="RubricAI MCP server")
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable DEBUG logging (overrides RUBRICAI_LOG_LEVEL)",
     )

@@ -1,6 +1,7 @@
 """End-to-end workflow test — full interview cycle in a single test (#51).
 
-Chains: env_write → bom_update → bom_check → intel_lookup → score_evaluate → report_generate
+Chains: env_write → bom_update → bom_check → intel_lookup →
+score_evaluate → report_generate
 All network calls are mocked at the fetcher layer.
 """
 
@@ -72,7 +73,11 @@ def mock_network():
         patch(
             "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(
-                return_value={"base": 9.8, "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H", "version": "3.1"}
+                return_value={
+                    "base": 9.8,
+                    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+                    "version": "3.1",
+                }
             ),
         ),
         patch(
@@ -162,7 +167,11 @@ class TestWorkflowE2E:
             }
         ]
         report_result = report_generate(
-            finding, intel_data, assessment, formats=["markdown", "json"], evidence=evidence
+            finding,
+            intel_data,
+            assessment,
+            formats=["markdown", "json"],
+            evidence=evidence,
         )
         assert "report_markdown" in report_result
         assert "report_json" in report_result
@@ -183,7 +192,10 @@ class TestWorkflowE2E:
 
     @pytest.mark.asyncio
     async def test_workflow_with_mitigations_lowers_lane(self, mock_network):
-        """Same scenario but with strong mitigations → lane should drop below Critical."""
+        """Same scenario but with strong mitigations.
+
+        Strong mitigations → lane should drop below Critical.
+        """
         initial_state = {
             "schema_version": "1",
             "context": "Internal-only staging env",
@@ -205,7 +217,10 @@ class TestWorkflowE2E:
             "mitigations": [
                 {
                     "type": "acl_segmentation",
-                    "description": "Network segmentation — component not reachable from internet",
+                    "description": (
+                        "Network segmentation —"
+                        " component not reachable from internet"
+                    ),
                     "evidence": ["Firewall rules verified 2026-06-01"],
                 },
                 {

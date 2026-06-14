@@ -74,6 +74,7 @@ def test_readme_clone_tag_matches_version():
     assert match, "README.md does not contain a 'git clone --branch vX.Y.Z' instruction"
     readme_version = match.group(1)
     assert readme_version == version, (
-        f"README clone tag v{readme_version} does not match pyproject.toml version {version}. "
+        f"README clone tag v{readme_version} does not match "
+        f"pyproject.toml version {version}. "
         f"Update the clone instruction in README.md."
     )

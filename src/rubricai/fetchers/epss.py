@@ -32,11 +32,15 @@ async def fetch(cve_id: str) -> dict | None:
 
     try:
         async with httpx.AsyncClient(timeout=_timeout()) as client:
-            resp = await fetch_with_retry(client, "GET", _API_URL, params={"cve": cve_id})
+            resp = await fetch_with_retry(
+                client, "GET", _API_URL, params={"cve": cve_id}
+            )
             resp.raise_for_status()
             data = resp.json()
     except httpx.HTTPStatusError as exc:
-        _logger.warning("EPSS fetch failed for %s: HTTP %d", cve_id, exc.response.status_code)
+        _logger.warning(
+            "EPSS fetch failed for %s: HTTP %d", cve_id, exc.response.status_code
+        )
         return None
     except httpx.HTTPError as exc:
         _logger.warning("EPSS fetch error for %s: %s", cve_id, type(exc).__name__)

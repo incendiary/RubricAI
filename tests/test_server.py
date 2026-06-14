@@ -7,7 +7,6 @@ from fastmcp.exceptions import ToolError
 
 from src.rubricai.server import mcp
 
-
 # ---------------------------------------------------------------------------
 # Tool registration
 # ---------------------------------------------------------------------------
@@ -91,7 +90,13 @@ class TestIntelLookupValidation:
             ),
             patch(
                 "src.rubricai.tools.intel.poc_fetcher.fetch",
-                new=AsyncMock(return_value={"available": False, "confidence": "unknown", "references": []}),
+                new=AsyncMock(
+                    return_value={
+                        "available": False,
+                        "confidence": "unknown",
+                        "references": [],
+                    }
+                ),
             ),
         ):
             result = await mcp.call_tool("intel_lookup", {"cves": ["CVE-2024-1234"]})

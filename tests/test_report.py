@@ -239,10 +239,7 @@ class TestReportGenerate:
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path / "envs"))
 
-        from src.rubricai.schemas.assessment import Assessment
         from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.schemas.finding import Finding
-        from src.rubricai.schemas.intel import IntelResult
         from src.rubricai.tools.report import _prepare_appendix_items
 
         ev = [
@@ -287,6 +284,7 @@ class TestReportGenerate:
         items = _prepare_appendix_items(ev)
         assert "embedded_data" not in items[0]
         assert "Rejected" in items[0].get("embedded_data_error", "")
+
     def test_returns_policy_version(self):
         p = policy_get()
         assert "policy_version" in p
