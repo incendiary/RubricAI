@@ -646,7 +646,7 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | [#80](https://github.com/incendiary/RubricAI/issues/80) | ✅ Done | Security: Schema + validation — remove extra=allow, CVE format + list-size limits (v0.8.13) |
 | — | ✅ Done | Security: Log path validation + volume security docs (v0.8.14) |
 | — | ✅ Done | **v0.9.0 — Security hardening complete** — all 17 findings remediated (PRs #73–#81), stale branches pruned |
-| [#12](https://github.com/incendiary/RubricAI/issues/12) | ⬜ Open | Branch protection — force-push blocked, required CI checks on main |
+| [#12](https://github.com/incendiary/RubricAI/issues/12) | ⏸️ Blocked | Branch protection — requires public repo or GitHub Pro/Team (private repo on free plan) |
 | [#51](https://github.com/incendiary/RubricAI/issues/51) | ✅ Done | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
 | [#52](https://github.com/incendiary/RubricAI/issues/52) | ✅ Done | server.py smoke test — import and tool registration count (v0.9.0) |
 | [#82](https://github.com/incendiary/RubricAI/pull/82) | ✅ Done | HTTP retry with exponential backoff + cache lazy eviction (v0.9.1) |
