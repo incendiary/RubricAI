@@ -137,7 +137,7 @@ def env_write(state: dict[str, Any], environment_name: str) -> dict[str, Any]:
     # Exclusive file lock prevents TOCTOU race on concurrent version increment
     lock_path = d / ".write.lock"
     lock_path.touch(exist_ok=True)
-    with open(lock_path, "r") as lock_fd:
+    with open(lock_path) as lock_fd:
         fcntl.flock(lock_fd, fcntl.LOCK_EX)
         try:
             next_ver = _current_version(d) + 1

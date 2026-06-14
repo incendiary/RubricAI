@@ -71,9 +71,7 @@ def _prepare_appendix_items(evidence: list[EvidenceItem]) -> list[dict[str, Any]
         item = e.model_dump(mode="json")
         if e.file_path:
             p = Path(e.file_path).resolve()  # resolve symlinks
-            if not any(
-                p == root or root in p.parents for root in allowed_roots
-            ):
+            if not any(p == root or root in p.parents for root in allowed_roots):
                 item["embedded_data_error"] = (
                     "Rejected: file_path outside allowed directories"
                 )

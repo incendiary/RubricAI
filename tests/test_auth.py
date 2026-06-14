@@ -5,7 +5,6 @@ a minimal ASGI app with the same middleware logic and driving it through
 Starlette's TestClient.
 """
 
-import pytest
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request
@@ -45,9 +44,7 @@ def _make_app(api_key: str | None = None) -> Starlette:
     """Build a minimal Starlette app, optionally with auth middleware."""
     middleware = []
     if api_key:
-        middleware.append(
-            Middleware(_APIKeyAuthMiddleware, api_key=api_key)
-        )
+        middleware.append(Middleware(_APIKeyAuthMiddleware, api_key=api_key))
     return Starlette(
         routes=[Route("/test", _ok_endpoint, methods=["GET"])],
         middleware=middleware,
@@ -97,9 +94,7 @@ class TestWithAuth:
 
     def test_basic_auth_scheme_rejected(self):
         """Only Bearer scheme is accepted, not Basic or others."""
-        resp = self.client.get(
-            "/test", headers={"Authorization": f"Basic {_TEST_KEY}"}
-        )
+        resp = self.client.get("/test", headers={"Authorization": f"Basic {_TEST_KEY}"})
         assert resp.status_code == 401
 
     def test_token_is_case_sensitive(self):

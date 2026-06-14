@@ -26,7 +26,8 @@ load_dotenv()
 
 # Configure logging at server startup.
 # Level: RUBRICAI_LOG_LEVEL env var (default INFO).
-# Format: RUBRICAI_LOG_FORMAT env var (default human-readable; set to "json" for structured).
+# Format: RUBRICAI_LOG_FORMAT env var
+# (default human-readable; set to "json" for structured).
 # Output: ~/.local/share/rubricai/rubricai.log + stderr.
 _log_level = os.getenv("RUBRICAI_LOG_LEVEL", "INFO").upper()
 _log_format = os.getenv("RUBRICAI_LOG_FORMAT", "text").lower()
@@ -42,7 +43,10 @@ _log_path = _log_dir / "rubricai.log"
 _log_path.parent.mkdir(parents=True, exist_ok=True)
 
 if _log_format == "json":
-    _fmt = '{"time":"%(asctime)s","logger":"%(name)s","level":"%(levelname)s","msg":"%(message)s"}'
+    _fmt = (
+        '{"time":"%(asctime)s","logger":"%(name)s"'
+        ',"level":"%(levelname)s","msg":"%(message)s"}'
+    )
 else:
     _fmt = "%(asctime)s %(name)s %(levelname)s %(message)s"
 
