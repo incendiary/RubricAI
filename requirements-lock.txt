@@ -77,7 +77,7 @@ pytest-cov==7.1.0
 pytest==9.0.3
 python-discovery==1.4.0
 python-dotenv==1.2.2
-python-multipart==0.0.30
+python-multipart==0.0.32
 pytokens==0.4.1
 referencing==0.37.0
 requests==2.34.2
