@@ -78,3 +78,16 @@ def test_readme_clone_tag_matches_version():
         f"pyproject.toml version {version}. "
         f"Update the clone instruction in README.md."
     )
+
+
+_VERSION_FILE = Path(__file__).parent.parent / "VERSION"
+
+
+def test_version_file_matches_pyproject():
+    """VERSION file at repo root must match pyproject.toml version."""
+    assert _VERSION_FILE.exists(), "VERSION file missing from repo root"
+    file_version = _VERSION_FILE.read_text().strip()
+    pyproject_version = _read_version()
+    assert file_version == pyproject_version, (
+        f"VERSION file ({file_version}) != " f"pyproject.toml ({pyproject_version})"
+    )
