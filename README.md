@@ -60,6 +60,7 @@ Each assessment also produces a `priority_score` — a numeric 0–10 value for 
 Score = `cvss × 0.4` + reachability (2.5/1.5/0.5/0) + intel (KEV +1.5, EPSS ≥0.5 +1.0, EPSS ≥0.1 +0.5) + utility bonus (high utility +0.5) − mitigation penalty (strong −1.5, partial −0.5), clamped 0–10.
 
 **Guardrails:**
+
 - External intel (KEV, high EPSS) can escalate urgency but cannot downgrade a finding. PoC availability is not used as a scoring signal — absence of public PoC does not reduce lane assignment.
 - Mitigations must be exploit-relevant to shift a lane — "EDR deployed" does not mitigate an IDOR.
 - Medium → Low requires a mitigation with a `causal_claim` of type `waf_rule`, `acl_segmentation`, `disable_feature`, `vendor_workaround`, or `virtual_patching`.
@@ -86,7 +87,7 @@ cp .env.example .env
 
 > **NVD API key — strongly recommended**
 > Without a key the NVD rate limit is 5 requests per 30 seconds, which will throttle any session assessing more than a handful of CVEs. With a free key it rises to 50 req/30s.
-> Register at **https://nvd.nist.gov/developers/request-an-api-key** (takes ~30 seconds), then set `NVD_API_KEY=<your-key>` in your `.env` file.
+> Register at **<https://nvd.nist.gov/developers/request-an-api-key>** (takes ~30 seconds), then set `NVD_API_KEY=<your-key>` in your `.env` file.
 
 To track development (not recommended for production use):
 
@@ -96,6 +97,7 @@ cd RubricAI
 ```
 
 ### Requirements
+
 - Python 3.11+
 - [pre-commit](https://pre-commit.com/)
 
@@ -137,6 +139,7 @@ Restart Claude Desktop after writing.
 ### Starting a session
 
 1. Generate the system prompt (once, or after workflow updates):
+
    ```bash
    python3 scripts/render_prompt.py --target claude
    # → prompts/out/claude_system_prompt.md
@@ -173,6 +176,7 @@ python scripts/render_prompt.py --target openai
 ```
 
 **Option A — OpenAI Agents SDK (recommended):**
+
 ```python
 from agents import Agent, MCPServerStdio
 
@@ -192,6 +196,7 @@ agent = Agent(
 ```
 
 **Option B — Responses API with remote MCP (SSE transport):**
+
 ```python
 response = client.responses.create(
     model="gpt-4o",
@@ -314,13 +319,16 @@ Does this match your understanding of the vulnerability?
 **Priority score: 9.2 / 10**
 
 **Verdict rationale:**
+
 - CVE is on CISA KEV with an internet-exposed exploit path and high attacker utility.
 
 **Required actions:**
+
 - → Remediate within 72 hours or apply immediate compensating controls.
 - → Strengthen mitigations with causal claims or escalate to patching.
 
 **Evidence gaps:**
+
 - [ ] Vendor workaround: confirm KB44093 is active and covers your specific build (Ivanti has noted bypasses exist on some versions)
 
 **Reports saved to:** `reports/FIND-ICS-001_20240104T103000.md` and `.json`
@@ -342,6 +350,7 @@ An engineer wants to monitor their entire stack for new vulnerabilities, not jus
 **Claude:** *(calls `env_read("production-dmz")`)* No BOM on record yet for production-dmz. Paste your component list — name, version, and type if you know it.
 
 **Engineer:**
+
 ```
 nginx 1.24.0 (reverse proxy)
 PostgreSQL 15.2 (database)
@@ -361,9 +370,11 @@ Redis 7.0.11 (cache)
 **Claude:** *(calls `bom_check(environment_name="production-dmz", days_back=7)`)* Checked all 5 components against NVD. Here's what's new:
 
 **nginx 1.24.0** — 1 CVE found
+
 - `CVE-2024-7347` — CVSS 4.7 (Medium) — nginx HTTP/3 QUIC module: specially crafted QUIC packets may cause worker process crash. *Published 2024-08-14.*
 
 **OpenSSL 3.1.4** — 2 CVEs found
+
 - `CVE-2024-5535` — CVSS 9.1 (Critical) — SSL_select_next_proto buffer overread, potential remote code execution. *Published 2024-06-27.*
 - `CVE-2024-4603` — CVSS 5.3 (Medium) — Excessive time checking DSA keys. *Published 2024-05-16.*
 
@@ -530,6 +541,7 @@ When an engineer claims a mitigation is in place (e.g. "we have a firewall block
 **How it works:** The AI asks the engineer to paste the relevant policy, config, or describe a screenshot. It assesses whether the content is consistent with the claim and sets `verified: true/false`. Evidence is stored in the report JSON and rendered in the markdown report under an **Evidence** section.
 
 **What to provide:**
+
 - Firewall/ACL policy output (`iptables -L`, security group rules, NSG config)
 - WAF rule excerpts
 - Network config showing segmentation
