@@ -8,7 +8,7 @@ Pygments==2.20.0
 Pyphen==0.17.2
 aiofile==3.11.1
 annotated-types==0.7.0
-anyio==4.13.0
+anyio==4.14.0
 attrs==26.1.0
 beartype==0.22.9
 black==26.5.1
