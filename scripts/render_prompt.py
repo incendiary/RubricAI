@@ -5,6 +5,7 @@ Usage:
     python scripts/render_prompt.py --target claude
     python scripts/render_prompt.py --target generic
     python scripts/render_prompt.py --target gemini
+    python scripts/render_prompt.py --target pycharm
 
 Output is written to prompts/out/<target>_system_prompt.md
 """
@@ -19,7 +20,7 @@ WORKFLOW_FILE = PROMPTS_DIR / "workflow.md"
 TEMPLATES_DIR = PROMPTS_DIR / "templates"
 OUT_DIR = PROMPTS_DIR / "out"
 
-TARGETS = ["claude", "generic", "gemini", "openai"]
+TARGETS = ["claude", "generic", "gemini", "openai", "pycharm"]
 
 
 def render(target: str) -> Path:
