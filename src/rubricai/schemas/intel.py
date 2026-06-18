@@ -56,3 +56,6 @@ class IntelResult(BaseModel):
     cvss: CvssInfo | None = None
     poc: PocInfo | None = None
     vendor: VendorInfo | None = None
+    # CISA Vulnrichment: can exploitation be fully automated end-to-end?
+    # Populated from CISA advisory data in NVD or derived from CVSS vector.
+    automatable: bool | None = None
