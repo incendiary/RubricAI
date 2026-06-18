@@ -297,3 +297,57 @@ async def fetch_cvss(cve_id: str) -> dict | None:
                 "version": version,
             }
     return None
+
+
+def extract_automatable(nvd_record: dict) -> bool | None:
+    """Determine whether exploitation can be fully automated from an NVD record.
+
+    Resolution order:
+    1. CISA Vulnrichment fields at the CVE top-level (added by CISA advisory program).
+    2. CVSS vector heuristic: AV:N + AC:L + PR:N + UI:N → automatable.
+    3. None if neither source is available.
+    """
+    # 1. Vulnrichment advisory data — CISA adds these top-level fields to CVE records
+    for field in ("automatable", "Automatable", "cisa_automatable"):
+        val = nvd_record.get(field)
+        if val is not None:
+            return str(val).lower() in ("yes", "true", "1")
+
+    # 2. CVSS vector derivation: fully automated = no user interaction, network-
+    #    accessible, low complexity, no privileges required
+    metrics = nvd_record.get("metrics", {})
+    for key in ("cvssMetricV31", "cvssMetricV30"):
+        entries = metrics.get(key, [])
+        if entries:
+            vector = entries[0].get("cvssData", {}).get("vectorString", "")
+            if vector:
+                return (
+                    "AV:N" in vector
+                    and "AC:L" in vector
+                    and "PR:N" in vector
+                    and "UI:N" in vector
+                )
+
+    return None
+
+
+def extract_technical_impact(nvd_record: dict) -> str | None:
+    """Derive BOD 26-04 technical impact (``"total"`` or ``"partial"``) from CVSS.
+
+    ``"total"`` = Scope Changed, OR both Confidentiality:High and Integrity:High.
+    ``"partial"`` = all other cases where CVSS data is present.
+    """
+    metrics = nvd_record.get("metrics", {})
+    for key in ("cvssMetricV31", "cvssMetricV30"):
+        entries = metrics.get(key, [])
+        if entries:
+            vector = entries[0].get("cvssData", {}).get("vectorString", "")
+            if not vector:
+                return "partial"
+            scope_changed = "S:C" in vector
+            conf_high = "C:H" in vector
+            integ_high = "I:H" in vector
+            if scope_changed or (conf_high and integ_high):
+                return "total"
+            return "partial"
+    return None

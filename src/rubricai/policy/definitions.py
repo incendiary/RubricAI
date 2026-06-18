@@ -66,6 +66,25 @@ EPSS_V5_LANE_BASES: dict[str, str] = {
 }
 
 
+# --- BOD 26-04 policy (CISA, issued 2026-06-10) ---
+# 4 binary signals → 4 remediation bands; signal count drives lane assignment.
+BOD_26_04_POLICY_VERSION = "bod-26-04"
+
+BOD_26_04_LANE_TARGETS: dict[str, int | None] = {
+    "critical": 3,  # All 4 signals — 72 hours + forensic triage
+    "high": 14,  # 3 of 4 signals
+    "medium": 60,  # 2 of 4 signals
+    "low": None,  # 0–1 signals — fix at next scheduled upgrade
+}
+
+BOD_26_04_LANE_BASES: dict[str, str] = {
+    "critical": "all_4_signals: internet_exposed + kev_listed + automatable + total_impact",
+    "high": "3_of_4_signals",
+    "medium": "2_of_4_signals",
+    "low": "0_or_1_signals",
+}
+
+
 def _parse_days(env_var: str, default: int | None) -> int | None:
     val = os.getenv(env_var, "").strip().lower()
     if not val:

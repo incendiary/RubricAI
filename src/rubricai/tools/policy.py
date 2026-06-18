@@ -1,6 +1,8 @@
 """policy.get MCP tool — returns a policy definition for auditability."""
 
 from ..policy.definitions import (
+    BOD_26_04_LANE_BASES,
+    BOD_26_04_LANE_TARGETS,
     EPSS_HIGH_THRESHOLD,
     EPSS_V5_CRITICAL_THRESHOLD,
     EPSS_V5_HIGH_THRESHOLD,
@@ -34,6 +36,9 @@ def policy_get(policy_version: str | None = None) -> dict:
 
     if version == "epss-v5":
         return _epss_v5_definition()
+
+    if version == "bod-26-04":
+        return _bod_26_04_definition()
 
     # Default: chml-v0.2 (and any unrecognised version falls through to chml)
     return _chml_definition()
@@ -104,6 +109,48 @@ def _epss_v5_definition() -> dict:
             f"the High threshold ({EPSS_V5_HIGH_THRESHOLD}).",
             "EPSS is a 30-day exploitation probability estimate — it does not measure "
             "attacker utility or impact. Review findings for severity context.",
+            "Scoring is deterministic — lane decisions are made by server rules, "
+            "not by AI freehand.",
+        ],
+    }
+
+
+def _bod_26_04_definition() -> dict:
+    return {
+        "policy_version": "bod-26-04",
+        "display_name": "BOD 26-04",
+        "description": (
+            "CISA Binding Operational Directive 26-04 (issued 2026-06-10). "
+            "4 binary signals per vulnerability per asset → 4 remediation bands. "
+            "Designed for federal agencies; applicable to any risk-aware team."
+        ),
+        "signals": {
+            "internet_exposed": "Is the affected asset reachable from the internet?",
+            "kev_listed": "Is the CVE on CISA's Known Exploited Vulnerabilities list?",
+            "automatable": (
+                "Can an adversary automate the full exploitation chain? "
+                "Sourced from CISA Vulnrichment or derived from CVSS vector "
+                "(AV:N + AC:L + PR:N + UI:N). Finding.automatable overrides."
+            ),
+            "technical_impact": (
+                "'total' = Scope Changed or C:H + I:H in CVSS. "
+                "'partial' = otherwise."
+            ),
+        },
+        "lanes": {
+            lane: {
+                "target_days": BOD_26_04_LANE_TARGETS[lane],
+                "patch_train": BOD_26_04_LANE_TARGETS[lane] is None,
+                "basis": BOD_26_04_LANE_BASES[lane],
+            }
+            for lane in BOD_26_04_LANE_TARGETS
+        },
+        "guardrails": [
+            "All 4 signals must be active to trigger the 3-day Critical deadline.",
+            "Unknown automatable status is treated as False (conservative). "
+            "Confirm with the engineer if Vulnrichment data is absent.",
+            "The 3-day Critical deadline requires forensic triage to determine "
+            "whether affected systems may already be compromised.",
             "Scoring is deterministic — lane decisions are made by server rules, "
             "not by AI freehand.",
         ],
