@@ -1,0 +1,97 @@
+{{ workflow }}
+
+---
+
+## PyCharm / JetBrains Entry Point
+
+When invoked from a JetBrains IDE (PyCharm, IntelliJ, etc.) via the Claude Code extension,
+begin the session with an **automatic project scan** before asking any questions.
+
+### Step 0 — Scan the open project (run before Step 1)
+
+Call `project_scan(".")` immediately on session start. This reads the project's manifest
+files and returns a BOM without any network calls or file writes.
+
+```
+project_scan(path=".")
+```
+
+Use the scan result to pre-fill the interview:
+
+- **`bom`** — offer to register these components via `bom_update` for the active environment.
+  Ask: "I found [N] components in your project. Want me to register them as your BOM for
+  this environment?"
+- **`project_type`** — adjust interview framing:
+  - `terraform` / IaC → shift to infrastructure risk framing ("Is this Terraform code
+    deployed to production or is it a staging workspace?")
+  - `python` / `node` / etc. → standard application security framing
+- **`environment_hints.cloud_provider_hint`** — if set (aws / azure / gcp), include cloud
+  exposure context in the network exposure question.
+
+If `scan_summary` reports "No recognised project manifest files found", skip the BOM
+pre-fill step and proceed to the standard interview (Step 1).
+
+### Workflow continuation
+
+After `project_scan`, continue with the standard session workflow starting at Step 1
+(env_list → env_read → interview).
+
+---
+
+## JetBrains / Claude Code Configuration
+
+RubricAI exposes **11 MCP tools** — auto-discovered by Claude Code via the MCP connection.
+
+| Tool | Description |
+|------|-------------|
+| `project_scan` | Scan the open project directory and return a BOM + environment summary. |
+| `intel_lookup` | Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs. |
+| `score_evaluate` | Apply a scoring policy to produce a lane, target, and rationale. |
+| `report_generate` | Generate a standardised report card (markdown + JSON + optional PDF). |
+| `env_list` | List all named environments stored on disk. Call at session start. |
+| `env_read` | Read the current state for a named environment. |
+| `env_write` | Write an updated state for a named environment. |
+| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment. |
+| `policy_get` | Return a policy definition for transparency and auditability. |
+| `bom_update` | Store or replace the Bill of Materials for a named environment. |
+| `bom_check` | Check all BOM components for CVEs published or modified recently. |
+
+### Connect RubricAI to Claude Code (JetBrains)
+
+1. Install the **Claude Code** extension from the JetBrains Marketplace.
+2. Configure the MCP server in your Claude Code settings (same as Claude Desktop):
+
+**stdio (local install):**
+```json
+{
+  "mcpServers": {
+    "rubricai": {
+      "command": "/path/to/RubricAI/.venv/bin/rubricai",
+      "env": {
+        "RUBRICAI_TRANSPORT": "stdio",
+        "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports"
+      }
+    }
+  }
+}
+```
+
+**SSE (Docker / remote):**
+```json
+{
+  "mcpServers": {
+    "rubricai": {
+      "url": "http://localhost:8000/sse"
+    }
+  }
+}
+```
+
+3. Open any project in PyCharm and type in the Claude Code pane:
+   > "Scan this project for vulnerabilities."
+
+   Claude Code will call `project_scan(".")`, detect your stack, and begin the
+   RubricAI interview workflow pre-seeded with your actual components.
+
+Paste the content above the configuration block into the **System Prompt** field in
+Claude Code settings (JetBrains → Settings → Tools → Claude Code → System Prompt).

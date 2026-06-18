@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "RubricAI"
-version = "1.2.0"
+version = "1.3.0"
 description = "Vulnerability prioritisation MCP server — deterministic CHML scoring with CISA KEV, EPSS, and NVD intel"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -55,6 +55,7 @@ ignore = ["S101"]  # allow assert in tests
 "src/rubricai/tools/policy.py" = ["E501"]
 "scripts/render_prompt.py" = ["E501"]
 "tests/test_bod_26_04.py" = ["E501"]
+"src/rubricai/tools/project_scan.py" = ["E501", "S314"]
 
 [tool.isort]
 profile = "black"
