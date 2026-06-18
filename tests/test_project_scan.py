@@ -28,18 +28,14 @@ class TestPythonProject:
         assert versions["requests"] == "2.31.0"
 
     def test_pyproject_toml_dependencies(self, tmp_project: Path):
-        (tmp_project / "pyproject.toml").write_text(
-            textwrap.dedent(
-                """\
+        (tmp_project / "pyproject.toml").write_text(textwrap.dedent("""\
                 [project]
                 name = "myapp"
                 dependencies = [
                     "httpx>=0.25.0",
                     "pydantic~=2.5",
                 ]
-                """
-            )
-        )
+                """))
         result = project_scan(str(tmp_project))
         assert "python" in result["project_type"]
         names = [e["name"] for e in result["bom"]]
@@ -91,9 +87,7 @@ class TestNodeProject:
 
 class TestTerraformProject:
     def test_provider_detected(self, tmp_project: Path):
-        (tmp_project / "main.tf").write_text(
-            textwrap.dedent(
-                """\
+        (tmp_project / "main.tf").write_text(textwrap.dedent("""\
                 terraform {
                   required_providers {
                     aws = {
@@ -102,25 +96,19 @@ class TestTerraformProject:
                     }
                   }
                 }
-                """
-            )
-        )
+                """))
         result = project_scan(str(tmp_project))
         assert "terraform" in result["project_type"]
         names = [e["name"] for e in result["bom"]]
         assert "hashicorp/aws" in names
 
     def test_module_detected(self, tmp_project: Path):
-        (tmp_project / "vpc.tf").write_text(
-            textwrap.dedent(
-                """\
+        (tmp_project / "vpc.tf").write_text(textwrap.dedent("""\
                 module "vpc" {
                   source  = "terraform-aws-modules/vpc/aws"
                   version = "5.1.0"
                 }
-                """
-            )
-        )
+                """))
         result = project_scan(str(tmp_project))
         assert "terraform" in result["project_type"]
         names = [e["name"] for e in result["bom"]]
@@ -152,17 +140,13 @@ class TestDockerProject:
         assert entry["version"] == "3.11-slim"
 
     def test_docker_compose_images(self, tmp_project: Path):
-        (tmp_project / "docker-compose.yml").write_text(
-            textwrap.dedent(
-                """\
+        (tmp_project / "docker-compose.yml").write_text(textwrap.dedent("""\
                 services:
                   web:
                     image: nginx:1.25
                   db:
                     image: postgres:15
-                """
-            )
-        )
+                """))
         result = project_scan(str(tmp_project))
         assert "docker" in result["project_type"]
         names = [e["name"] for e in result["bom"]]
