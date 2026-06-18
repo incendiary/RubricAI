@@ -73,7 +73,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v1.3.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v1.4.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -303,138 +303,17 @@ Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUB
 
 ---
 
-## Example sessions
+## Example scenarios
 
-Two common workflows are shown below. Both use the same Claude Desktop setup — the difference is what you ask.
+Full conversation transcripts with topical June 2026 CVEs are in [docs/examples.md](docs/examples.md).
 
----
-
-### Scenario 1 — Triage a specific CVE
-
-An engineer receives a scanner alert and needs a priority decision before the next patch window.
-
----
-
-**Claude:** *(calls `env_list`)* Which environment are we working on today? I have these on record: **production-dmz**, **staging-web**. Or give me a new name to create one.
-
-**Engineer:** Production-dmz.
-
-**Claude:** *(calls `env_read("production-dmz")`)* I have your environment on record: WebApp (internet-exposed), PaymentAPI (internal), UserDB and AnalyticsDB (local). Still current?
-
-**Engineer:** Yes. I need to assess CVE-2024-21887 — it's showing up in my scanner for Ivanti Connect Secure v22.3. Our VPN gateway.
-
-**Claude:** *(calls `intel_lookup` immediately)*
-
-Got the CVE data. Here's what the public record says:
-
-> **CVE-2024-21887** — A command injection vulnerability in the web component of Ivanti Connect Secure allows an authenticated administrator to send specially crafted requests and execute arbitrary commands on the appliance.
->
-> - **What an attacker can achieve:** Remote code execution (from CVE description)
-> - **How the exploit is triggered:** Network-accessible (CVSS AV:N)
-> - **Privileges required:** High (CVSS PR:H — administrator credentials)
-> - **CVSS base:** 9.1 · **EPSS:** 0.94 (99th percentile) · **KEV listed:** Yes (due 2024-01-31)
-
-Does this match your understanding of the vulnerability?
-
-**Engineer:** Yes, that's right. Admin credentials, web interface on port 443.
-
-**Claude:** Two environment questions:
-
-1. Is the Ivanti management interface reachable from the internet, or only internally?
-2. Any compensating controls in place? (ACL, vendor workaround, patching)
-
-**Engineer:** It's internet-facing — port 443 is open externally. We pushed Ivanti's XML mitigation workaround on the 3rd. Here's the change ticket: *[pastes INC-20240103-0042: applied mitigation per Ivanti KB44093, verified by change manager]*
-
-**Claude:** *(calls `score_evaluate`, `report_generate`)*
-
----
-
-**🔴 CRITICAL — Remediate within 72 hours**
-
-| Signal | Value | Applied | Effect |
-|--------|-------|---------|--------|
-| CVSS base | 9.1 (v3.1) | ✅ | +3.64 to priority score |
-| CISA KEV | **Listed** (due 2024-01-31) | ✅ | Critical escalation +1.5 pts |
-| EPSS | 0.9400 (99th pct) | ✅ high | +1.0 pts |
-| Reachability | internet\_exposed | ✅ | +2.5 pts |
-| Utility | HIGH (rce) | ✅ | +0.5 pts |
-| Mitigation | partial (workaround, unverified) | ⚠️ | −0.5 pts |
-
-**Priority score: 9.2 / 10**
-
-**Verdict rationale:**
-
-- CVE is on CISA KEV with an internet-exposed exploit path and high attacker utility.
-
-**Required actions:**
-
-- → Remediate within 72 hours or apply immediate compensating controls.
-- → Strengthen mitigations with causal claims or escalate to patching.
-
-**Evidence gaps:**
-
-- [ ] Vendor workaround: confirm KB44093 is active and covers your specific build (Ivanti has noted bypasses exist on some versions)
-
-**Reports saved to:** `reports/FIND-ICS-001_20240104T103000.md` and `.json`
-
-*(If PDF requested: `.pdf` report card also saved — suitable for security team review)*
-
----
-
-### Scenario 2 — BOM ingestion and daily CVE check
-
-An engineer wants to monitor their entire stack for new vulnerabilities, not just respond to individual alerts.
-
----
-
-**Claude:** *(calls `env_list`)* Which environment are we working on today? I have: **production-dmz**, **staging-web**. Or give me a new name.
-
-**Engineer:** Production-dmz. I want to register our software stack so we can check for new CVEs.
-
-**Claude:** *(calls `env_read("production-dmz")`)* No BOM on record yet for production-dmz. Paste your component list — name, version, and type if you know it.
-
-**Engineer:**
-
-```
-nginx 1.24.0 (reverse proxy)
-PostgreSQL 15.2 (database)
-OpenSSL 3.1.4 (library)
-Django 4.2.7 (web framework)
-Redis 7.0.11 (cache)
-```
-
-**Claude:** *(calls `bom_update(environment_name="production-dmz", components=[...])`)* Stored 5 components. BOM saved to production-dmz — it'll be available in every future session.
-
----
-
-*Next morning:*
-
-**Engineer:** Any new CVEs for our stack this week?
-
-**Claude:** *(calls `bom_check(environment_name="production-dmz", days_back=7)`)* Checked all 5 components against NVD. Here's what's new:
-
-**nginx 1.24.0** — 1 CVE found
-
-- `CVE-2024-7347` — CVSS 4.7 (Medium) — nginx HTTP/3 QUIC module: specially crafted QUIC packets may cause worker process crash. *Published 2024-08-14.*
-
-**OpenSSL 3.1.4** — 2 CVEs found
-
-- `CVE-2024-5535` — CVSS 9.1 (Critical) — SSL_select_next_proto buffer overread, potential remote code execution. *Published 2024-06-27.*
-- `CVE-2024-4603` — CVSS 5.3 (Medium) — Excessive time checking DSA keys. *Published 2024-05-16.*
-
-**PostgreSQL 15.2, Django 4.2.7, Redis 7.0.11** — no new CVEs this week.
-
----
-
-CVE-2024-5535 (OpenSSL, CVSS 9.1) looks urgent. Want me to start a full triage for that one now? I already have OpenSSL 3.1.4 pre-filled from your BOM.
-
-**Engineer:** Yes, let's triage it.
-
-**Claude:** *(calls `intel_lookup("CVE-2024-5535")` — pre-fills component from BOM, presents derived context for confirmation, then asks only reachability and mitigation questions)*
-
----
-
-The JSON report, markdown card, and optional PDF are written to disk for submission to your central security review queue.
+| # | Scenario | Policy | CVE |
+|---|---|---|---|
+| 1 | [Quick start — triage a single CVE](docs/examples.md#1-quick-start--triage-a-single-cve) | CHML v0.2 | Check Point VPN RCE |
+| 2 | [Policy comparison — same CVE, three policies](docs/examples.md#2-policy-comparison--same-cve-three-policies) | All three | Check Point VPN RCE |
+| 3 | [BOM daily check — SaaS microservices stack](docs/examples.md#3-bom-daily-check--saas-microservices-stack) | CHML v0.2 | FastAPI request smuggling |
+| 4 | [IaC assessment — PyCharm + Terraform](docs/examples.md#4-iac-environment-assessment--pycharm--terraform) | CHML v0.2 | EKS IMDSv2 gap |
+| 5 | [KEV alone ≠ Critical — Linux kernel privesc](docs/examples.md#5-nuanced-case--kev-alone--critical) | All three | Linux kernel io_uring privesc |
 
 ---
 
