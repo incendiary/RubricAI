@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "RubricAI"
-version = "1.0.0"
+version = "1.1.0"
 description = "Vulnerability prioritisation MCP server — deterministic CHML scoring with CISA KEV, EPSS, and NVD intel"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -50,6 +50,9 @@ ignore = ["S101"]  # allow assert in tests
 # Rationale/action strings are intentionally verbose prose — line length not enforced
 "src/rubricai/policy/chml.py" = ["E501"]
 "src/rubricai/policy/definitions.py" = ["E501"]
+"src/rubricai/policy/epss_v5.py" = ["E501"]
+"src/rubricai/policy/bod_26_04.py" = ["E501"]
+"src/rubricai/tools/policy.py" = ["E501"]
 "scripts/render_prompt.py" = ["E501"]
 
 [tool.isort]
