@@ -108,3 +108,6 @@ class Finding(BaseModel):
     data_impact: DataImpact | None = None
     mitigations: list[Mitigation] = Field(default_factory=list)
     evidence_pointers: list[EvidencePointer] = Field(default_factory=list)
+    # Engineer-provided override for BOD 26-04 automatable signal.
+    # When set, takes precedence over Vulnrichment / CVSS-derived value.
+    automatable: bool | None = None

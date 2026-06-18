@@ -107,6 +107,11 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
             None,
         )
 
+    # Automatable signal (for BOD 26-04) — extracted from Vulnrichment / CVSS vector
+    automatable: bool | None = None
+    if nvd_record:
+        automatable = nvd_fetcher.extract_automatable(nvd_record)
+
     return IntelResult(
         cve_or_id=cve_id,
         retrieved_at=datetime.now(tz=UTC),
@@ -117,6 +122,7 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
         cvss=cvss,
         poc=poc,
         vendor=vendor,
+        automatable=automatable,
     )
 
 

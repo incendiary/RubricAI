@@ -2,12 +2,13 @@
 
 from collections.abc import Callable
 
-from . import chml, epss_v5
+from . import bod_26_04, chml, epss_v5
 from .definitions import POLICY_VERSION
 
 _POLICIES: dict[str, Callable] = {
     "chml-v0.2": chml.evaluate,
     "epss-v5": epss_v5.evaluate,
+    "bod-26-04": bod_26_04.evaluate,
 }
 
 DEFAULT_POLICY: str = POLICY_VERSION  # "chml-v0.2"
