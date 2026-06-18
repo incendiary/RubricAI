@@ -101,12 +101,13 @@ def score_evaluate(
     intel: dict[str, Any],
     policy_version: str | None = None,
 ) -> dict[str, Any]:
-    """Apply the CHML scoring policy to produce a lane, target, and rationale.
+    """Apply a scoring policy to produce a lane, target, and rationale.
 
     Args:
         finding: Finding object (engineer-provided context).
         intel: IntelResult object (output of intel_lookup).
-        policy_version: Policy version string. Defaults to current version.
+        policy_version: Policy to apply. One of: ``chml-v0.2`` (default),
+            ``epss-v5``, ``bod-26-04``. Defaults to ``chml-v0.2``.
     """
     return _score_evaluate(finding, intel, policy_version)
 
@@ -195,10 +196,12 @@ def env_migrate_legacy(environment_name: str) -> dict[str, Any]:
 
 @mcp.tool()
 def policy_get(policy_version: str | None = None) -> dict[str, Any]:
-    """Return the current CHML policy definition for transparency and auditability.
+    """Return a policy definition for transparency and auditability.
 
     Args:
-        policy_version: Version to retrieve. Currently only chml-v0.1 exists.
+        policy_version: Policy to describe. One of: ``chml-v0.2`` (default),
+            ``epss-v5``, ``bod-26-04``. Pass ``"list"`` to retrieve all available
+            policy names.
     """
     return _policy_get(policy_version)
 

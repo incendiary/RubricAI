@@ -1,6 +1,7 @@
 import os
 
 POLICY_VERSION = "chml-v0.2"
+EPSS_V5_POLICY_VERSION = "epss-v5"
 
 # Utility types considered "high impact" for lane escalation
 HIGH_UTILITY_TYPES: frozenset[str] = frozenset(
@@ -35,6 +36,33 @@ LANE_BASES: dict[str, str] = {
     "high": "internet_exposed + high_utility_or_epss",
     "medium": "constrained_or_internal_reachability_or_lower_impact",
     "low": "low_utility_and_reachability_or_strong_mitigations",
+}
+
+
+# --- EPSS v5 policy thresholds (env-var overridable) ---
+# EPSS is the primary lane driver; thresholds chosen based on v5 score distribution.
+EPSS_V5_CRITICAL_THRESHOLD: float = float(
+    os.getenv("RUBRICAI_EPSS_V5_CRITICAL_THRESHOLD", "0.7")
+)
+EPSS_V5_HIGH_THRESHOLD: float = float(
+    os.getenv("RUBRICAI_EPSS_V5_HIGH_THRESHOLD", "0.4")
+)
+EPSS_V5_MEDIUM_THRESHOLD: float = float(
+    os.getenv("RUBRICAI_EPSS_V5_MEDIUM_THRESHOLD", "0.1")
+)
+
+EPSS_V5_LANE_TARGETS: dict[str, int | None] = {
+    "critical": 3,  # 72 hours
+    "high": 7,
+    "medium": 30,  # explicit SLA — EPSS-primary policy sets a fixed Medium window
+    "low": None,  # patch train
+}
+
+EPSS_V5_LANE_BASES: dict[str, str] = {
+    "critical": "epss_score>=0.7 + internet_exposed",
+    "high": "epss_score>=0.4 or (kev_listed + internet_exposed)",
+    "medium": "epss_score>=0.1",
+    "low": "epss_score<0.1 and no_kev_internet_escalation",
 }
 
 
