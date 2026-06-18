@@ -22,6 +22,7 @@ EXPECTED_TOOLS = {
     "policy_get",
     "bom_update",
     "bom_check",
+    "project_scan",
 }
 
 
@@ -37,7 +38,7 @@ class TestServerImport:
         assert mcp.name == "RubricAI"
 
     def test_tool_count(self, registered_tools):
-        assert len(registered_tools) == 10
+        assert len(registered_tools) == 11
 
     def test_expected_tool_names(self, registered_tools):
         assert registered_tools == EXPECTED_TOOLS

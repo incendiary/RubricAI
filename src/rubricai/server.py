@@ -17,6 +17,7 @@ from .tools.environment import env_read as _env_read
 from .tools.environment import env_write as _env_write
 from .tools.intel import lookup as _intel_lookup
 from .tools.policy import policy_get as _policy_get
+from .tools.project_scan import project_scan as _project_scan
 from .tools.report import report_generate as _report_generate
 from .tools.scoring import score_evaluate as _score_evaluate
 
@@ -271,3 +272,33 @@ async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]
         a human-readable ``summary``.
     """
     return await _bom_check(environment_name, days_back)
+
+
+@mcp.tool()
+def project_scan(
+    path: str = ".",
+    include: list[str] | None = None,
+) -> dict[str, Any]:
+    """Scan a project directory and return a BOM + environment summary.
+
+    Reads manifest files (requirements.txt, pyproject.toml, package.json,
+    pom.xml, go.mod, Gemfile.lock, *.tf, Dockerfile, docker-compose.yml)
+    and returns a structured BOM ready to pass to ``bom_update``.
+
+    Useful as the first step in a PyCharm or IDE-initiated session: run
+    ``project_scan(".")`` on the open project before starting the interview.
+
+    Args:
+        path: Directory to scan. Defaults to current working directory.
+              Path traversal via '..' is rejected.
+        include: Restrict scan to these project types. Options: python, node,
+                 java, go, ruby, terraform, docker. Omit to detect all types.
+
+    Returns:
+        Dict with:
+            ``project_type`` (list of detected types),
+            ``bom`` (list of component dicts — pass to bom_update),
+            ``environment_hints`` (suggested env_write fields),
+            ``scan_summary`` (human-readable summary).
+    """
+    return _project_scan(path, include)

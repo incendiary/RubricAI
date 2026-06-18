@@ -73,7 +73,7 @@ Download the [latest release](https://github.com/incendiary/RubricAI/releases/la
 
 ```bash
 # Latest release (recommended)
-git clone --branch v1.2.0 --depth 1 git@github.com:incendiary/RubricAI.git
+git clone --branch v1.3.0 --depth 1 git@github.com:incendiary/RubricAI.git
 cd RubricAI
 
 python3 -m venv .venv
@@ -216,6 +216,50 @@ python scripts/render_prompt.py --target gemini    # → prompts/out/gemini_syst
 ```
 
 Paste the output into your client's system prompt field.
+
+### PyCharm / JetBrains (Claude Code extension)
+
+RubricAI works with the Claude Code JetBrains extension. The `project_scan` tool
+auto-detects your project's manifest files and pre-fills the BOM before the interview
+starts, so you don't have to list your dependencies manually.
+
+```bash
+python scripts/render_prompt.py --target pycharm
+# → prompts/out/pycharm_system_prompt.md
+```
+
+**Setup:**
+
+1. Install the **Claude Code** extension from the JetBrains Marketplace.
+2. Configure the MCP server in Claude Code settings (same config as Claude Desktop):
+
+   ```json
+   {
+     "mcpServers": {
+       "rubricai": {
+         "command": "/path/to/RubricAI/.venv/bin/rubricai",
+         "env": {
+           "RUBRICAI_TRANSPORT": "stdio",
+           "RUBRICAI_REPORT_DIR": "/path/to/RubricAI/reports"
+         }
+       }
+     }
+   }
+   ```
+
+3. Paste `prompts/out/pycharm_system_prompt.md` into the System Prompt field
+   (JetBrains → Settings → Tools → Claude Code → System Prompt).
+
+4. Open any project in PyCharm and type in the Claude Code pane:
+   > *"Scan this project for vulnerabilities."*
+
+   Claude Code calls `project_scan(".")`, detects your stack (Python, Node, Go,
+   Terraform, Docker, etc.), and begins the RubricAI interview pre-seeded with
+   your actual components.
+
+**IaC projects:** For Terraform projects, `project_scan` detects providers and module
+sources and sets `project_type: iac` + `cloud_provider_hint` in the environment hints.
+The interview shifts to infrastructure risk framing automatically.
 
 ---
 
