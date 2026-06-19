@@ -222,3 +222,88 @@ Do not stop after the tool call. Do not say "I've generated the report." Present
 ## High-Utility Types
 
 RCE, authentication bypass, privilege escalation, and direct data access are considered "high utility" for lane escalation. Denial of service, tampering, and lateral movement are considered lower utility unless combined with high reachability and KEV/EPSS signals.
+
+---
+
+## Policy Comparison (`score_compare`)
+
+When the engineer asks "how would this score under all policies?" or "which policy should we use?", call `score_compare` instead of `score_evaluate` three times:
+
+```
+score_compare(finding=<finding_dict>, intel=<intel_result>)
+```
+
+Returns `results` (one Assessment per policy), `summary` (table of lane + SLA per policy), and `consensus` (`"agree"` / `"diverge"`). Present the summary as a table, then explain the key difference in signal weighting that caused any divergence.
+
+---
+
+## Calling score_evaluate / score_compare: Finding schema reference
+
+Construct the `finding` dict carefully. Pydantic rejects unknown fields — any extra key causes a validation error.
+
+### Top-level Finding fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `str` | Unique finding ID (e.g. `"FIND-001"`) |
+| `ticket_id` | `str \| null` | Optional scanner/tracker ticket ID |
+| `cve_or_id` | `str` | CVE ID or advisory reference |
+| `title` | `str \| null` | Optional short description |
+| `component` | `Component` | See below |
+| `environment` | `Environment \| null` | See below — **only 2 fields** |
+| `entry_point` | `EntryPoint` | Required |
+| `reachability` | `str` | **Top-level field — NOT nested under `environment`** |
+| `preconditions` | `Preconditions \| null` | Optional |
+| `attacker_utility` | `list[str]` | Min 1 item; see allowed values below |
+| `data_impact` | `DataImpact \| null` | Optional |
+| `mitigations` | `list[Mitigation]` | Default empty list |
+| `evidence_pointers` | `list[EvidencePointer]` | Default empty list |
+| `automatable` | `bool \| null` | Optional BOD 26-04 override |
+
+### `component.type` allowed values
+
+`"library"`, `"service"`, `"os"`, `"firmware"`, `"application"`, `"appliance"`, `"unknown"`
+
+Network appliances (firewalls, VPNs, load balancers) → use `"appliance"`. Do **not** use `"network-appliance"`.
+
+### `environment` sub-object — only 2 fields
+
+```json
+{
+  "stage": "prod" | "non_prod" | "unknown",
+  "hosting": "on_prem" | "cloud" | "saas" | "hybrid" | "unknown"
+}
+```
+
+Do **not** add `name`, `production`, `reachability`, `data_impact`, or any other field here.
+
+### `reachability` — top-level on Finding, not nested
+
+```json
+{
+  "reachability": "internet_exposed" | "constrained_external" | "internal" | "local_only"
+}
+```
+
+### `attacker_utility` allowed values
+
+`"rce"`, `"auth_bypass"`, `"priv_esc"`, `"data_access"`, `"tampering"`, `"dos"`, `"lateral_movement"`, `"other"`
+
+### Documenting a vendor patch (resolved finding)
+
+When the engineer confirms a vendor patch has been applied:
+
+```json
+{
+  "mitigations": [
+    {
+      "type": "vendor_patch",
+      "description": "Upgraded nginx to 1.26.1 — CVE-2024-XXXX patched in this release.",
+      "causal_claim": "Patch eliminates the vulnerable code path per vendor advisory.",
+      "evidence": ["JIRA-4821", "https://example.com/change/4821"]
+    }
+  ]
+}
+```
+
+A `vendor_patch` mitigation with a `causal_claim` causes all policies to short-circuit to `lane="low"` with `priority_score=0.0` — confirming full remediation. A `vendor_patch` without a `causal_claim` does **not** trigger the short-circuit and is treated as a strong (but not resolving) compensating control.

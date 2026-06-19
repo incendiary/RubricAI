@@ -14,6 +14,7 @@ from src.rubricai.server import mcp
 EXPECTED_TOOLS = {
     "intel_lookup",
     "score_evaluate",
+    "score_compare",
     "report_generate",
     "env_list",
     "env_read",
@@ -38,7 +39,7 @@ class TestServerImport:
         assert mcp.name == "RubricAI"
 
     def test_tool_count(self, registered_tools):
-        assert len(registered_tools) == 11
+        assert len(registered_tools) == 12
 
     def test_expected_tool_names(self, registered_tools):
         assert registered_tools == EXPECTED_TOOLS

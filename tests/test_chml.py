@@ -286,3 +286,45 @@ class TestParseDays:
         targets = get_lane_targets()
         assert targets["critical"] == 1
         assert targets["high"] is None
+
+
+class TestVendorPatch:
+    def test_vendor_patch_with_causal_claim_resolves_critical(self):
+        """KEV + internet + RCE = Critical; vendor_patch + causal_claim → low."""
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                utility=["rce"],
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Upgraded to patched version.",
+                        "causal_claim": "Patch removes vulnerable code path.",
+                        "evidence": ["JIRA-001"],
+                    }
+                ],
+            ),
+            _make_intel(kev_listed=True),
+        )
+        assert result.lane == "low"
+        assert result.priority_score == 0.0
+        assert result.target.basis == "vendor_patch_applied"
+        assert "Remediated" in result.rationale[0]
+
+    def test_vendor_patch_without_causal_claim_does_not_resolve(self):
+        """vendor_patch without causal_claim must NOT trigger the short-circuit."""
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                utility=["rce"],
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Patch applied.",
+                        # No causal_claim — must not resolve
+                    }
+                ],
+            ),
+            _make_intel(kev_listed=True),
+        )
+        assert result.lane == "critical"

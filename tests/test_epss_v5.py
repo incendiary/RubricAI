@@ -217,3 +217,40 @@ class TestPolicyGet:
 
         result = policy_get(None)
         assert result["policy_version"] == "chml-v0.2"
+
+
+class TestVendorPatchEpssV5:
+    def test_vendor_patch_with_causal_claim_resolves_critical(self):
+        """EPSS 0.9 + internet = Critical; vendor_patch + causal_claim → low."""
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Upgraded to patched version.",
+                        "causal_claim": "Patch removes vulnerable code path.",
+                        "evidence": ["JIRA-002"],
+                    }
+                ],
+            ),
+            _make_intel(epss_score=0.9, kev_listed=True),
+        )
+        assert result.lane == "low"
+        assert result.priority_score == 0.0
+        assert result.target.basis == "vendor_patch_applied"
+
+    def test_vendor_patch_without_causal_claim_does_not_resolve(self):
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Patch applied.",
+                    }
+                ],
+            ),
+            _make_intel(epss_score=0.9),
+        )
+        assert result.lane == "critical"
