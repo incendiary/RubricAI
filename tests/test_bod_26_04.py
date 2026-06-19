@@ -337,3 +337,42 @@ class TestPolicyVersion:
         )
         assert result.lane == "critical"
         assert any("forensic" in a.lower() for a in result.actions)
+
+
+class TestVendorPatchBod2604:
+    def test_vendor_patch_with_causal_claim_resolves_critical(self):
+        """All 4 signals normally = Critical; vendor_patch + causal_claim → low."""
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                automatable=True,
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Vendor patch applied.",
+                        "causal_claim": "Patch removes vulnerable code path.",
+                        "evidence": ["JIRA-003"],
+                    }
+                ],
+            ),
+            _make_intel(kev_listed=True, cvss_vector=_TOTAL_VECTOR),
+        )
+        assert result.lane == "low"
+        assert result.priority_score == 0.0
+        assert result.target.basis == "vendor_patch_applied"
+
+    def test_vendor_patch_without_causal_claim_does_not_resolve(self):
+        result = evaluate(
+            _make_finding(
+                reachability="internet_exposed",
+                automatable=True,
+                mitigations=[
+                    {
+                        "type": "vendor_patch",
+                        "description": "Patch applied.",
+                    }
+                ],
+            ),
+            _make_intel(kev_listed=True, cvss_vector=_TOTAL_VECTOR),
+        )
+        assert result.lane == "critical"

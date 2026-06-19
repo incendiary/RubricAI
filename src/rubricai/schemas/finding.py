@@ -64,6 +64,7 @@ class Mitigation(BaseModel):
         "acl_segmentation",
         "disable_feature",
         "vendor_workaround",
+        "vendor_patch",
         "virtual_patching",
         "increased_monitoring",
         "rate_limiting",
@@ -95,6 +96,7 @@ class Finding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
+    ticket_id: str | None = None
     cve_or_id: str
     title: str | None = None
     component: Component

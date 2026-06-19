@@ -148,3 +148,53 @@ class TestAssessmentSchema:
                     "evidence_gaps": [],
                 }
             )
+
+
+class TestFindingNewFields:
+    def test_ticket_id_accepted(self):
+        f = Finding.model_validate(
+            {
+                "id": "FIND-001",
+                "ticket_id": "JIRA-1234",
+                "cve_or_id": "CVE-2024-9999",
+                "component": {"name": "nginx", "version": "1.25.3"},
+                "entry_point": {"description": "TCP 443"},
+                "reachability": "internet_exposed",
+                "attacker_utility": ["rce"],
+            }
+        )
+        assert f.ticket_id == "JIRA-1234"
+
+    def test_ticket_id_optional(self):
+        f = Finding.model_validate(
+            {
+                "id": "FIND-001",
+                "cve_or_id": "CVE-2024-9999",
+                "component": {"name": "nginx", "version": "1.25.3"},
+                "entry_point": {"description": "TCP 443"},
+                "reachability": "internet_exposed",
+                "attacker_utility": ["rce"],
+            }
+        )
+        assert f.ticket_id is None
+
+    def test_vendor_patch_mitigation_accepted(self):
+        f = Finding.model_validate(
+            {
+                "id": "FIND-001",
+                "cve_or_id": "CVE-2024-9999",
+                "component": {"name": "nginx", "version": "1.25.3"},
+                "entry_point": {"description": "TCP 443"},
+                "reachability": "internet_exposed",
+                "attacker_utility": ["rce"],
+                "mitigations": [
+                    {
+                        "type": "vendor_patch",
+                        "description": "Upgraded to 1.26.1.",
+                        "causal_claim": "Patch eliminates the vulnerable code path.",
+                        "evidence": ["JIRA-001"],
+                    }
+                ],
+            }
+        )
+        assert f.mitigations[0].type == "vendor_patch"

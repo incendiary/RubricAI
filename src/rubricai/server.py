@@ -20,6 +20,7 @@ from .tools.policy import policy_get as _policy_get
 from .tools.project_scan import project_scan as _project_scan
 from .tools.report import report_generate as _report_generate
 from .tools.scoring import score_evaluate as _score_evaluate
+from .tools.scoring_compare import score_compare as _score_compare
 
 # Load .env before reading any env vars. No-ops if file absent.
 # Does not override vars already set in the process environment.
@@ -111,6 +112,24 @@ def score_evaluate(
             ``epss-v5``, ``bod-26-04``. Defaults to ``chml-v0.2``.
     """
     return _score_evaluate(finding, intel, policy_version)
+
+
+@mcp.tool()
+def score_compare(
+    finding: dict[str, Any],
+    intel: dict[str, Any],
+) -> dict[str, Any]:
+    """Score a finding under all registered policies and return a comparison.
+
+    Use this when the engineer asks which policy to adopt, or wants to see how
+    different regulatory frameworks (CHML, EPSS v5, BOD 26-04) would prioritise
+    the same finding. Prefer this over calling score_evaluate three times.
+
+    Args:
+        finding: Finding object (engineer-provided context).
+        intel: IntelResult object (output of intel_lookup).
+    """
+    return _score_compare(finding, intel)
 
 
 @mcp.tool()
