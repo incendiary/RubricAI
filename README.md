@@ -583,6 +583,7 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | — | ✅ Done | **v0.9.0 — Security hardening complete** — all 17 findings remediated (PRs #73–#81), stale branches pruned |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | ⏸️ Blocked | Branch protection — requires public repo or GitHub Pro/Team (private repo on free plan) |
 | [#104](https://github.com/incendiary/RubricAI/issues/104) | ⬜ Open | Threat intel enrichment — add optional `threat_regions` and `threat_industries` context from free/open feeds; include confidence + source provenance |
+| [#105](https://github.com/incendiary/RubricAI/issues/105) | ⬜ Open | Environment lifecycle — add tools to clear a named environment, clear all environments, and perform full local reset of stored data/reports/PDFs (with `confirm=true` and dry-run support) |
 | [#51](https://github.com/incendiary/RubricAI/issues/51) | ✅ Done | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
 | [#52](https://github.com/incendiary/RubricAI/issues/52) | ✅ Done | server.py smoke test — import and tool registration count (v0.9.0) |
 | [#82](https://github.com/incendiary/RubricAI/pull/82) | ✅ Done | HTTP retry with exponential backoff + cache lazy eviction (v0.9.1) |
