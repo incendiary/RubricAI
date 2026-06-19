@@ -9,6 +9,7 @@ from .definitions import (
     POLICY_VERSION,
     STRONG_MITIGATION_TYPES,
     get_lane_targets,
+    is_patched_and_verified,
 )
 
 
@@ -41,6 +42,28 @@ def evaluate(
         intel_escalation.append("kev_listed")
     if epss_high:
         intel_escalation.append("epss_high")
+
+    if is_patched_and_verified(finding.mitigations):
+        return Assessment(
+            policy_version=policy_version,
+            lane="low",
+            target=RemediationTarget(days=None, basis="vendor_patch_applied"),
+            score_breakdown=ScoreBreakdown(
+                intel_escalation=intel_escalation,
+                reachability=finding.reachability,
+                utility="high" if high_utility else "low",
+                mitigation_effect="strong",
+            ),
+            rationale=[
+                "Remediated — vendor patch applied and verified. No further action required."
+            ],
+            actions=[
+                "No action required. Monitor for re-introduction in future deployments."
+            ],
+            evidence_gaps=[],
+            priority_score=0.0,
+            priority_score_breakdown={},
+        )
 
     rationale: list[str] = []
     actions: list[str] = []

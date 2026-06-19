@@ -18,9 +18,20 @@ STRONG_MITIGATION_TYPES: frozenset[str] = frozenset(
         "acl_segmentation",
         "disable_feature",
         "vendor_workaround",
+        "vendor_patch",
         "virtual_patching",
     }
 )
+
+
+def is_patched_and_verified(mitigations: list) -> bool:
+    """Return True if a vendor_patch mitigation with a causal_claim exists.
+
+    When True, all policies short-circuit to lane='low' with a Remediated rationale
+    rather than running the normal signal-based lane decision tree.
+    """
+    return any(m.type == "vendor_patch" and bool(m.causal_claim) for m in mitigations)
+
 
 # Default remediation targets (days). None means "patch train" — no fixed SLA.
 # Critical and High have explicit SLAs; Medium and Low default to patch train.
