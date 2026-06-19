@@ -66,7 +66,12 @@ def _rubricai_entry(project_root: pathlib.Path) -> dict:
 def _merge(existing: dict, project_root: pathlib.Path) -> dict:
     merged = dict(existing)
     merged.setdefault("mcpServers", {})
-    merged["mcpServers"]["rubricai"] = _rubricai_entry(project_root)
+    new_entry = _rubricai_entry(project_root)
+    # Preserve env vars already in the config (e.g. NVD_API_KEY) that our
+    # template doesn't set. New template values take precedence on overlap.
+    existing_env = merged["mcpServers"].get("rubricai", {}).get("env", {})
+    new_entry["env"] = {**existing_env, **new_entry["env"]}
+    merged["mcpServers"]["rubricai"] = new_entry
     return merged
 
 
