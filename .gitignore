@@ -48,6 +48,7 @@ secrets.json
 reports/
 .cache/
 prompts/out/
+.claude/tasks/
 # Environment state files (versioned at runtime — template is tracked)
 environment/state_v*.json
 environment/state_latest.json
