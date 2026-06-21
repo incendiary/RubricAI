@@ -83,8 +83,8 @@ async def fetch(cve_id: str) -> dict | None:
 
         data = resp.json()
 
-        # GitHub returns a paginated list; we want the first (and usually only) match
-        advisories = data.get("advisories", [])
+        # GitHub returns a list directly; we want the first (and usually only) match
+        advisories = data if isinstance(data, list) else data.get("advisories", [])
         if not advisories:
             return None
 
@@ -153,7 +153,7 @@ async def search(
             return []
 
         data = resp.json()
-        advisories = data.get("advisories", [])
+        advisories = data if isinstance(data, list) else data.get("advisories", [])
 
         # Filter by days_back on modified_at
         cutoff = (datetime.now(tz=UTC) - timedelta(days=days_back)).isoformat()
