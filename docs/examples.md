@@ -24,6 +24,7 @@ they change daily as exploitation activity is observed.
 **Policy:** `chml-v0.2` (default)
 **Entry point:** Claude Desktop
 **[Live conversation](https://claude.ai/share/43c6095e-f82a-4f68-ba35-10882495e90e)** — Full transcript with evidence PDF appendix
+**[Report PDF](../../examples/FIND-000012_20260621T145937Z.pdf)** — Final scorecard with evidence screenshots
 
 ### Environment: production-edge
 
@@ -369,6 +370,7 @@ metadata_options = {
 **Policy:** All three (comparison)
 **Entry point:** Claude Desktop
 **Live conversation** — Demonstrates KEV→Critical assumption limitations (local access scope)
+**[Report PDF](../../examples/FIND-build-infra-CVE-2024-1086_20260621T151612Z.pdf)** — Build infra triage with policy comparison
 
 ### Environment: build-infra
 
