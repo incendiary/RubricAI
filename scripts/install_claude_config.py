@@ -134,10 +134,6 @@ def main() -> None:
 
     config_path: pathlib.Path = args.config or _default_config_path()
 
-    if not _entry_point_exists(args.cwd) and not args.force:
-        _print_setup_steps(args.cwd)
-        sys.exit(1)
-
     if config_path.exists():
         try:
             existing = json.loads(config_path.read_text(encoding="utf-8"))
@@ -198,6 +194,9 @@ def main() -> None:
         print()
 
     if args.write:
+        if not _entry_point_exists(args.cwd) and not args.force:
+            _print_setup_steps(args.cwd)
+            sys.exit(1)
         config_path.parent.mkdir(parents=True, exist_ok=True)
         # Back up the existing config before writing so it can be restored manually
         # if something goes wrong.
