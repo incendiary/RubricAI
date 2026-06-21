@@ -532,7 +532,7 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
 | `RUBRICAI_REPORT_DIR` | `~/.local/share/rubricai/reports` | Directory for persisted report cards |
 | `RUBRICAI_ENV_DIR` | `~/.local/share/rubricai` | Directory for versioned environment state files |
-| `RUBRICAI_HTTP_TIMEOUT` | `30` | HTTP timeout (seconds) for CISA KEV, EPSS, and NVD fetches |
+| `RUBRICAI_HTTP_TIMEOUT` | `30` | HTTP timeout (seconds) baseline. Requests auto-escalate (5s → 10s → 30s) on timeout, so slow networks are handled gracefully without changing this value. Increase if all windows consistently exhaust. |
 | `RUBRICAI_LOG_LEVEL` | `INFO` | Log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `RUBRICAI_LOG_FORMAT` | `text` | Log format (`text` for human-readable, `json` for structured) |
 | `RUBRICAI_LOG_DIR` | `~/.local/share/rubricai` | Directory for log file (`rubricai.log`) |

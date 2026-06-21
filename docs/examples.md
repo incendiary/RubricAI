@@ -23,6 +23,7 @@ they change daily as exploitation activity is observed.
 **Scenario:** An engineer receives a scanner alert for their internet-facing firewall/VPN gateway.
 **Policy:** `chml-v0.2` (default)
 **Entry point:** Claude Desktop
+**[Live conversation](https://claude.ai/share/43c6095e-f82a-4f68-ba35-10882495e90e)** — Full transcript with evidence PDF appendix
 
 ### Environment: production-edge
 
@@ -118,6 +119,7 @@ Does that match your understanding?
 **CVE:** CVE-2024-3400 — Palo Alto Networks PAN-OS GlobalProtect OS Command Injection *(same as Example 1)*
 **Scenario:** A security team evaluating whether to adopt BOD 26-04 or EPSS v5 wants to see how the same finding scores under all three policies.
 **Entry point:** Claude Desktop or generic MCP client
+**[Live conversation](https://claude.ai/share/3b80b1ee-0b96-45ad-9ea1-3dfa108b5ab1)** — Same CVE, three policy scores (no PDF)
 
 *Environment: `production-edge` — same as Example 1. BOM unchanged.*
 
@@ -162,6 +164,7 @@ All three policies agree: Critical. The policies diverge on *why* — CHML empha
 **Scenario:** A team registers their Python microservices stack and runs a weekly CVE check. Two CVEs surface the following week.
 **Policy:** `chml-v0.2`
 **Entry point:** Claude Desktop
+**[Live conversation](https://claude.ai/share/d5297ad5-c145-4791-b81b-64120a1e7ede)** — Session A of multi-part BOM assessment
 
 ### Environment: production-api
 
@@ -287,6 +290,7 @@ The ReDoS requires a malformed `Content-Type` header on a route that processes f
 **Scenario:** A platform engineer opens a Terraform repository in PyCharm with the Claude Code extension. The `project_scan` tool auto-detects the AWS infrastructure and pre-seeds the session.
 **Policy:** `chml-v0.2`
 **Entry point:** PyCharm / JetBrains Claude Code extension
+**[Live conversation](https://claude.ai/share/ee8ac65b-f46e-4e92-a068-7a7960d0a7cf)** — SaaS microservices BOM daily check continued
 
 ### Environment: platform-eks-prod
 
@@ -364,6 +368,7 @@ metadata_options = {
 **Scenario:** An engineer triages a KEV-listed kernel CVE on an internal build server. The example shows how reachability gates scoring, and how BOD 26-04 and CHML diverge on local-access findings.
 **Policy:** All three (comparison)
 **Entry point:** Claude Desktop
+**Live conversation** — Demonstrates KEV→Critical assumption limitations (local access scope)
 
 ### Environment: build-infra
 

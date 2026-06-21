@@ -5,10 +5,10 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 
-import httpx
+import httpx  # noqa: F401 — required by tests for AsyncClient mocking
 
 from ..cache import FileCache
-from .retry import fetch_with_retry
+from .retry import fetch_with_timeout_escalation
 
 _logger = logging.getLogger(__name__)
 
@@ -28,9 +28,43 @@ def _timeout() -> int:
 _cache = FileCache()
 
 
-def _headers() -> dict:
+def _headers(with_auth: bool = True) -> dict:
+    if not with_auth:
+        return {}
     key = os.getenv("NVD_API_KEY")
     return {"apiKey": key} if key else {}
+
+
+async def _fetch_with_auth_fallback(
+    method: str, url: str, params: dict, headers: dict | None = None
+) -> httpx.Response:
+    """Fetch with API key; fallback to unauthenticated if auth service returns 503.
+
+    NVD's auth service occasionally fails while the public endpoint works.
+    This helper tries authenticated first, then retries without auth on 503.
+    """
+    headers = headers or {}
+
+    # Try with auth headers first
+    if headers:
+        resp = await fetch_with_timeout_escalation(
+            method, url, params=params, headers=headers
+        )
+        if resp.status_code != 503:
+            return resp
+
+        # Auth service is down (503) — retry without auth
+        _logger.warning(
+            "NVD auth service returned 503; retrying without API key. "
+            "To test your API key, request one at "
+            "https://nvd.nist.gov/developers/request-an-api-key"
+        )
+        return await fetch_with_timeout_escalation(
+            method, url, params=params, headers={}
+        )
+
+    # No auth headers — just fetch normally
+    return await fetch_with_timeout_escalation(method, url, params=params, headers={})
 
 
 def _process_cve(cve: dict) -> dict:
@@ -138,40 +172,38 @@ async def _search_single(
     start_index = 0
     page_size = 100
 
-    async with httpx.AsyncClient(timeout=_timeout()) as client:
-        while True:
-            resp = await fetch_with_retry(
-                client,
-                "GET",
-                _API_URL,
-                params={
-                    "keywordSearch": keyword,
-                    "lastModStartDate": start_date,
-                    "lastModEndDate": end_date,
-                    "resultsPerPage": page_size,
-                    "startIndex": start_index,
-                },
-                headers=_headers(),
-            )
-            _logger.debug(
-                "NVD search response: keyword=%r startIndex=%d status=%d",
-                keyword,
-                start_index,
-                resp.status_code,
-            )
-            if resp.status_code == 404:
-                _logger.debug("NVD search 404 for keyword=%r — no results", keyword)
-                break  # NVD returns 404 for zero-result keyword queries — no results
-            resp.raise_for_status()
-            data = resp.json()
+    while True:
+        resp = await _fetch_with_auth_fallback(
+            "GET",
+            _API_URL,
+            params={
+                "keywordSearch": keyword,
+                "lastModStartDate": start_date,
+                "lastModEndDate": end_date,
+                "resultsPerPage": page_size,
+                "startIndex": start_index,
+            },
+            headers=_headers(),
+        )
+        _logger.debug(
+            "NVD search response: keyword=%r startIndex=%d status=%d",
+            keyword,
+            start_index,
+            resp.status_code,
+        )
+        if resp.status_code == 404:
+            _logger.debug("NVD search 404 for keyword=%r — no results", keyword)
+            break  # NVD returns 404 for zero-result keyword queries — no results
+        resp.raise_for_status()
+        data = resp.json()
 
-            for vuln in data.get("vulnerabilities", []):
-                results.append(_process_cve(vuln.get("cve", {})))
+        for vuln in data.get("vulnerabilities", []):
+            results.append(_process_cve(vuln.get("cve", {})))
 
-            total = data.get("totalResults", 0)
-            start_index += page_size
-            if start_index >= total or len(results) >= max_results:
-                break
+        total = data.get("totalResults", 0)
+        start_index += page_size
+        if start_index >= total or len(results) >= max_results:
+            break
 
     return results
 
@@ -182,18 +214,16 @@ async def fetch(cve_id: str) -> dict | None:
     if cached is not None:
         return cached
 
-    async with httpx.AsyncClient(timeout=_timeout()) as client:
-        resp = await fetch_with_retry(
-            client,
-            "GET",
-            _API_URL,
-            params={"cveId": cve_id},
-            headers=_headers(),
-        )
-        if resp.status_code == 404:
-            return None
-        resp.raise_for_status()
-        data = resp.json()
+    resp = await _fetch_with_auth_fallback(
+        "GET",
+        _API_URL,
+        params={"cveId": cve_id},
+        headers=_headers(),
+    )
+    if resp.status_code == 404:
+        return None
+    resp.raise_for_status()
+    data = resp.json()
 
     vulns = data.get("vulnerabilities", [])
     if not vulns:
