@@ -79,7 +79,7 @@ def _print_setup_steps(project_root: pathlib.Path) -> None:
     print(f"  cd {root}", file=sys.stderr)
     print("  python3 -m venv .venv", file=sys.stderr)
     print("  source .venv/bin/activate", file=sys.stderr)
-    print("  pip install -e \".[dev]\"", file=sys.stderr)
+    print('  pip install -e ".[dev]"', file=sys.stderr)
     print(file=sys.stderr)
     print("Then rerun this script, or pass --force to write anyway.", file=sys.stderr)
 
