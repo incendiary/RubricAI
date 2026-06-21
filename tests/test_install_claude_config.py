@@ -30,7 +30,7 @@ def test_merge_preserves_existing_env_vars(tmp_path):
                 "args": [],
                 "cwd": "/tmp/old",
                 "env": {
-                    "NVD_API_KEY": "secret-key",  # pragma: allowlist secret
+                    "NVD_API_KEY": "secret-key",
                     "CUSTOM_FLAG": "enabled",
                     "RUBRICAI_TRANSPORT": "sse",
                 },
