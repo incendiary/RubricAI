@@ -9,7 +9,7 @@ import os
 import httpx
 
 from ..cache import FileCache
-from .retry import fetch_with_retry
+from .retry import fetch_with_timeout_escalation
 
 _CATALOG_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 _NS = "kev"
@@ -49,10 +49,9 @@ async def fetch(cve_id: str) -> dict:
 
 async def _download_and_index() -> dict | None:
     try:
-        async with httpx.AsyncClient(timeout=_timeout()) as client:
-            resp = await fetch_with_retry(client, "GET", _CATALOG_URL)
-            resp.raise_for_status()
-            data = resp.json()
+        resp = await fetch_with_timeout_escalation("GET", _CATALOG_URL)
+        resp.raise_for_status()
+        data = resp.json()
     except httpx.HTTPStatusError as exc:
         _logger.warning("KEV download failed: HTTP %d", exc.response.status_code)
         return None
