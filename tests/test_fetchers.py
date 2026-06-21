@@ -374,6 +374,40 @@ async def test_nvd_search_returns_cve_list(tmp_path):
     assert "nvd.nist.gov" in results[0]["url"]
 
 
+async def test_nvd_search_cache_key_includes_vendor(tmp_path):
+    """Same keyword + different vendor must not reuse the wrong cached result.
+
+    Regression for a bug where the search cache key omitted ``vendor``, so a
+    second search with the same keyword but a different vendor returned the
+    first vendor's cached results.
+    """
+    cache = FileCache(tmp_path)
+
+    apache_client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-1111")))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch(
+            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=apache_client
+        ),
+    ):
+        apache_results = await nvd_fetcher.search("httpd", vendor="apache", days_back=7)
+
+    nginx_client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-2222")))
+    with (
+        patch.object(nvd_fetcher, "_cache", cache),
+        patch(
+            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=nginx_client
+        ) as nginx_cls,
+    ):
+        nginx_results = await nvd_fetcher.search("httpd", vendor="nginx", days_back=7)
+
+    # The second vendor must trigger a real HTTP call (cache miss) and return its
+    # own result, not the apache result cached under the same keyword.
+    assert nginx_cls.call_count >= 1
+    assert apache_results[0]["id"] == "CVE-2024-1111"
+    assert nginx_results[0]["id"] == "CVE-2024-2222"
+
+
 async def test_nvd_search_empty_results(tmp_path):
     cache = FileCache(tmp_path)
     client = _mock_client(_mock_response({"totalResults": 0, "vulnerabilities": []}))

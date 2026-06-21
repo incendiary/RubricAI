@@ -219,7 +219,8 @@ async def search(
 
     Uses ``keywordSearch`` + ``lastModStartDate`` + ``lastModEndDate``. Both date
     params are required by the NVD v2 API — omitting ``lastModEndDate`` returns 404.
-    Results are cached for ``_SEARCH_TTL_HOURS`` hours (keyed on original keyword).
+    Results are cached for ``_SEARCH_TTL_HOURS`` hours (keyed on original keyword,
+    normalised vendor, lookback window, and result cap).
 
     Args:
         keyword: Component name (name-only, no version string).
@@ -232,7 +233,7 @@ async def search(
     Returns a list of dicts, each with keys:
         id, description, cvss_base, cvss_version, published, last_modified, url
     """
-    cache_key = f"{keyword.lower()}:{days_back}:{max_results}"
+    cache_key = f"{keyword.lower()}:{(vendor or '').lower()}:{days_back}:{max_results}"
     cached = _cache.get(f"{_NS}_search", cache_key)
     if cached is not None:
         return cached

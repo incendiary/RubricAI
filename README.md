@@ -549,56 +549,13 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 
 ## Roadmap
 
-| Issue | Status | Description |
-|-------|--------|-------------|
-| [#6](https://github.com/incendiary/RubricAI/issues/6) | ✅ Done | Secret scan — gitleaks + TruffleHog + detect-secrets (pre-commit + CI) |
-| [#7](https://github.com/incendiary/RubricAI/issues/7) | ✅ Done | Dependency audit — Dependabot (pip + Actions, weekly) |
-| [#8](https://github.com/incendiary/RubricAI/issues/8) | ✅ Done | Core implementation — schemas, CHML policy, fetchers, MCP tools |
-| [#9](https://github.com/incendiary/RubricAI/issues/9) | ✅ Done | Tooling — Black, Ruff, isort, pre-commit, CI pipeline |
-| [#10](https://github.com/incendiary/RubricAI/issues/10) | ✅ Done | Tests — expand integration coverage, add fetcher mocks |
-| [#11](https://github.com/incendiary/RubricAI/issues/11) | ✅ Done | Documentation — README, system prompt templates |
-| [#31](https://github.com/incendiary/RubricAI/issues/31) | ✅ Done | MCP server fix — use rubricai entry point instead of python -m src.main |
-| [#35](https://github.com/incendiary/RubricAI/issues/35) | ✅ Done | Priority Score — RubricAI-native 0–10 score for within-lane prioritisation |
-| [#37](https://github.com/incendiary/RubricAI/issues/37) | ✅ Done | Signal transparency — Signal Analysis table showing how CVSS/EPSS/KEV were applied (v0.6.1) |
-| [#38](https://github.com/incendiary/RubricAI/issues/38) | ✅ Done | Intel-first interview — derive technical fields from CVE data, ask engineers only what they know (v0.7.0) |
-| [#39](https://github.com/incendiary/RubricAI/issues/39) | ✅ Done | BOM tracking — `bom_update` / `bom_check` MCP tools for daily CVE monitoring (v0.7.0) |
-| [#40](https://github.com/incendiary/RubricAI/issues/40) | ✅ Done | PDF export — single-page A4 landscape report card via `formats=["pdf"]` (v0.7.0) |
-| [#45](https://github.com/incendiary/RubricAI/issues/45) | ✅ Done | Multi-environment — named environments, always-first selection, legacy migration (v0.8.0) |
-| [#46](https://github.com/incendiary/RubricAI/issues/46) | ✅ Done | Compact PDF report card — dense grid, no whitespace (v0.8.0) |
-| [#47](https://github.com/incendiary/RubricAI/issues/47) | ✅ Done | OpenAI compatibility — Agents SDK + Responses API setup (v0.8.0) |
-| [#54](https://github.com/incendiary/RubricAI/issues/54) | ✅ Done | Bug: score_evaluate schema mismatch — cvss_av in entry_point violates extra=forbid (v0.8.1) |
-| [#55](https://github.com/incendiary/RubricAI/issues/55) | ✅ Done | Evidence file storage + PDF appendix — file_path on EvidenceItem, embedded screenshots (v0.8.1) |
-| [#58](https://github.com/incendiary/RubricAI/issues/58) | ✅ Done | Bug: NVD search() raises on 404 — bom_check aborts for unresolvable keywords (v0.8.2) |
-| [#59](https://github.com/incendiary/RubricAI/issues/59) | ✅ Done | Bug: bom_check uses name+version keyword — NVD AND logic returns zero results for known-vulnerable components (v0.8.3) |
-| — | ✅ Done | BOM name resolution — OSV translation layer (PyPI/npm/Go/Maven) + NVD keyword normalisation fallback; users never need to know NVD naming conventions (v0.8.4) |
-| [#73](https://github.com/incendiary/RubricAI/issues/73) | ✅ Done | Security: XSS — enable Jinja2 HTML autoescape, mark safe only constructed data URIs (v0.8.6) |
-| [#74](https://github.com/incendiary/RubricAI/issues/74) | ✅ Done | Security: Arbitrary file read — path validation on evidence file_path (v0.8.7) |
-| [#75](https://github.com/incendiary/RubricAI/issues/75) | ✅ Done | Security: Optional API key auth + TLS on SSE transport (v0.8.8) |
-| [#76](https://github.com/incendiary/RubricAI/issues/76) | ✅ Done | Security: Path traversal — validate environment_name in BOM tools + cache namespace (v0.8.9) |
-| [#77](https://github.com/incendiary/RubricAI/issues/77) | ✅ Done | Security: TOCTOU race — file locking on state versioning (v0.8.10) |
-| [#78](https://github.com/incendiary/RubricAI/issues/78) | ✅ Done | Security: HTTP error handling — catch exceptions in fetchers, validate timeout env var (v0.8.11) |
-| [#79](https://github.com/incendiary/RubricAI/issues/79) | ✅ Done | Security: Dockerfile hardening — non-root user, remove dev deps, no error suppression (v0.8.12) |
-| [#80](https://github.com/incendiary/RubricAI/issues/80) | ✅ Done | Security: Schema + validation — remove extra=allow, CVE format + list-size limits (v0.8.13) |
-| — | ✅ Done | Security: Log path validation + volume security docs (v0.8.14) |
-| — | ✅ Done | **v0.9.0 — Security hardening complete** — all 17 findings remediated (PRs #73–#81), stale branches pruned |
-| [#12](https://github.com/incendiary/RubricAI/issues/12) | ⏸️ Blocked | Branch protection — requires public repo or GitHub Pro/Team (private repo on free plan) |
-| [#104](https://github.com/incendiary/RubricAI/issues/104) | ⬜ Open | Threat intel enrichment — add optional `threat_regions` and `threat_industries` context from free/open feeds; include confidence + source provenance |
-| [#105](https://github.com/incendiary/RubricAI/issues/105) | ⬜ Open | Environment lifecycle — add tools to clear a named environment, clear all environments, and perform full local reset of stored data/reports/PDFs (with `confirm=true` and dry-run support) |
-| [#51](https://github.com/incendiary/RubricAI/issues/51) | ✅ Done | End-to-end workflow test — full interview cycle in a single test (v0.9.0) |
-| [#52](https://github.com/incendiary/RubricAI/issues/52) | ✅ Done | server.py smoke test — import and tool registration count (v0.9.0) |
-| [#82](https://github.com/incendiary/RubricAI/pull/82) | ✅ Done | HTTP retry with exponential backoff + cache lazy eviction (v0.9.1) |
-| [#83](https://github.com/incendiary/RubricAI/pull/83) | ✅ Done | Health endpoint, structured JSON logging, --verbose CLI flag (v0.9.2) |
-| [#84](https://github.com/incendiary/RubricAI/pull/84) | ✅ Done | Prompt templates updated with complete 10-tool reference (v0.9.3) |
-| [#85](https://github.com/incendiary/RubricAI/pull/85) | ✅ Done | README refresh — 10-tool table, env vars, version sync test (v0.9.4) |
-| [#86](https://github.com/incendiary/RubricAI/pull/86) | ✅ Done | Auth middleware test coverage (v0.9.5) |
-| — | ✅ Done | **v1.0.0 — Production-ready release** — retry, observability, docs, full test coverage |
-| [#88](https://github.com/incendiary/RubricAI/pull/88) | ✅ Done | Policy dispatcher — `epss-v5` and `bod-26-04` policies; registry; `policy_version` param live (v1.1.0) |
-| [#92](https://github.com/incendiary/RubricAI/pull/92) | ✅ Done | BOD 26-04 policy — 4-signal scoring with Vulnrichment automatable (v1.2.0) |
-| [#95](https://github.com/incendiary/RubricAI/pull/95) | ✅ Done | `project_scan` MCP tool — auto-discovers BOM from manifests; PyCharm/JetBrains integration (v1.3.0) |
-| [#98](https://github.com/incendiary/RubricAI/pull/98) | ✅ Done | `docs/examples.md` — 5 end-to-end conversation examples with BOM headers (v1.4.0) |
-| [#100](https://github.com/incendiary/RubricAI/pull/100) | ✅ Done | Bug: install_claude_config.py drops NVD_API_KEY on re-run — deep-merge env dict (v1.4.1) |
-| [#102](https://github.com/incendiary/RubricAI/pull/102) | ✅ Done | Docs: replace fabricated CVEs with real NVD-verified entries + BOM headers (v1.5.0) |
-| — | ✅ Done | **v1.6.0** — `vendor_patch` mitigation type; patched findings resolve to Low across all 3 policies; `score_compare` tool for side-by-side policy comparison; workflow prompt schema reference |
+The roadmap has moved to a dedicated file: **[ROADMAP.md](ROADMAP.md)**.
+
+It tracks delivered work (with version tags) and the open backlog. Each open item
+names the file(s) to change, what to do, and how to verify — so it can be picked up
+independently.
+
+---
 
 > This project was uplifted for public release with the assistance of Claude (Anthropic).
 > Things should work, but some paths may not have been fully re-tested. PRs and fixes welcome.

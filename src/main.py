@@ -51,31 +51,10 @@ def main() -> None:
         api_key = os.getenv("RUBRICAI_API_KEY")
         if api_key:
             from starlette.middleware import Middleware
-            from starlette.requests import Request
-            from starlette.responses import JSONResponse
-            from starlette.types import ASGIApp, Receive, Scope, Send
 
-            class APIKeyAuthMiddleware:
-                """Reject requests without a valid Bearer token."""
+            from rubricai.auth import APIKeyAuthMiddleware
 
-                def __init__(self, app: ASGIApp) -> None:
-                    self.app = app
-
-                async def __call__(
-                    self, scope: Scope, receive: Receive, send: Send
-                ) -> None:
-                    if scope["type"] == "http":
-                        request = Request(scope)
-                        auth_header = request.headers.get("authorization", "")
-                        if auth_header != f"Bearer {api_key}":
-                            response = JSONResponse(
-                                {"error": "Unauthorized"}, status_code=401
-                            )
-                            await response(scope, receive, send)
-                            return
-                    await self.app(scope, receive, send)
-
-            kwargs["middleware"] = [Middleware(APIKeyAuthMiddleware)]
+            kwargs["middleware"] = [Middleware(APIKeyAuthMiddleware, api_key=api_key)]
 
         mcp.run(transport=transport, **kwargs)
 
