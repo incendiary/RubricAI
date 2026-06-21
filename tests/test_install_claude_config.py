@@ -5,7 +5,6 @@ import sys
 from contextlib import redirect_stderr, redirect_stdout
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -57,17 +56,20 @@ def test_main_refuses_to_write_when_entry_point_is_missing(tmp_path, monkeypatch
     config_path = tmp_path / "claude_desktop_config.json"
     config_path.write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
 
-    monkeypatch.setattr(module.sys, "argv", [
-        "install_claude_config.py",
-        "--config",
-        str(config_path),
-        "--cwd",
-        str(tmp_path),
-        "--write",
-    ])
+    monkeypatch.setattr(
+        module.sys,
+        "argv",
+        [
+            "install_claude_config.py",
+            "--config",
+            str(config_path),
+            "--cwd",
+            str(tmp_path),
+            "--write",
+        ],
+    )
     monkeypatch.setattr(module, "_entry_point_exists", lambda project_root: False)
 
-    stderr = pytest.MonkeyPatch()
     with redirect_stdout(sys.stdout), redirect_stderr(sys.stderr):
         with pytest.raises(SystemExit) as excinfo:
             module.main()
@@ -80,15 +82,19 @@ def test_main_force_writes_even_when_entry_point_is_missing(tmp_path, monkeypatc
     module = _load_module()
 
     config_path = tmp_path / "claude_desktop_config.json"
-    monkeypatch.setattr(module.sys, "argv", [
-        "install_claude_config.py",
-        "--config",
-        str(config_path),
-        "--cwd",
-        str(tmp_path),
-        "--write",
-        "--force",
-    ])
+    monkeypatch.setattr(
+        module.sys,
+        "argv",
+        [
+            "install_claude_config.py",
+            "--config",
+            str(config_path),
+            "--cwd",
+            str(tmp_path),
+            "--write",
+            "--force",
+        ],
+    )
     monkeypatch.setattr(module, "_entry_point_exists", lambda project_root: False)
 
     module.main()
