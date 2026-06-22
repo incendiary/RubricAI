@@ -165,7 +165,7 @@ All three policies agree: Critical. The policies diverge on *why* — CHML empha
 **Scenario:** A team registers their Python microservices stack and runs a weekly CVE check. Two CVEs surface the following week.
 **Policy:** `chml-v0.2`
 **Entry point:** Claude Desktop
-**[Live conversation](https://claude.ai/share/d5297ad5-c145-4791-b81b-64120a1e7ede)** — Session A of multi-part BOM assessment
+**[Live conversation — Session A](https://claude.ai/share/d5297ad5-c145-4791-b81b-64120a1e7ede)** | **[Session B](https://claude.ai/share/356faf22-7f1d-49cf-9b7f-77705c43504a)** — Multi-part BOM assessment
 
 ### Environment: production-api
 
