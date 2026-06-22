@@ -103,6 +103,20 @@ cd RubricAI
 
 ---
 
+## Example scenarios
+
+Full conversation transcripts with topical June 2026 CVEs are in [docs/examples.md](docs/examples.md). Select examples include PDF report cards with evidence appendices.
+
+| # | Scenario | Policy | CVE | Report |
+|---|---|---|---|---|
+| 1 | [Quick start — triage a single CVE](docs/examples.md#1-quick-start--triage-a-single-cve) | CHML v0.2 | Check Point VPN RCE | [📄 PDF](examples/FIND-000012_20260621T145937Z.pdf) |
+| 2 | [Policy comparison — same CVE, three policies](docs/examples.md#2-policy-comparison--same-cve-three-policies) | All three | Check Point VPN RCE | — |
+| 3 | [BOM daily check — SaaS microservices stack](docs/examples.md#3-bom-daily-check--saas-microservices-stack) | CHML v0.2 | FastAPI request smuggling | — |
+| 4 | [IaC assessment — PyCharm + Terraform](docs/examples.md#4-iac-environment-assessment--pycharm--terraform) | CHML v0.2 | EKS IMDSv2 gap | — |
+| 5 | [KEV alone ≠ Critical — Linux kernel privesc](docs/examples.md#5-nuanced-case--kev-alone--critical) | All three | Linux kernel io_uring privesc | [📄 PDF](examples/FIND-build-infra-CVE-2024-1086_20260621T151612Z.pdf) |
+
+---
+
 ## Running
 
 ### Local — Claude Desktop (stdio transport)
@@ -302,21 +316,6 @@ An AI client conducts a session like this:
 Report files are written as `{finding_id}_{timestamp}.md` and `.json` under `RUBRICAI_REPORT_DIR` (default `./reports/`).
 
 ---
-
-## Example scenarios
-
-Full conversation transcripts with topical June 2026 CVEs are in [docs/examples.md](docs/examples.md). Select examples include PDF report cards with evidence appendices.
-
-| # | Scenario | Policy | CVE | Report |
-|---|---|---|---|---|
-| 1 | [Quick start — triage a single CVE](docs/examples.md#1-quick-start--triage-a-single-cve) | CHML v0.2 | Check Point VPN RCE | [📄 PDF](examples/FIND-000012_20260621T145937Z.pdf) |
-| 2 | [Policy comparison — same CVE, three policies](docs/examples.md#2-policy-comparison--same-cve-three-policies) | All three | Check Point VPN RCE | — |
-| 3 | [BOM daily check — SaaS microservices stack](docs/examples.md#3-bom-daily-check--saas-microservices-stack) | CHML v0.2 | FastAPI request smuggling | — |
-| 4 | [IaC assessment — PyCharm + Terraform](docs/examples.md#4-iac-environment-assessment--pycharm--terraform) | CHML v0.2 | EKS IMDSv2 gap | — |
-| 5 | [KEV alone ≠ Critical — Linux kernel privesc](docs/examples.md#5-nuanced-case--kev-alone--critical) | All three | Linux kernel io_uring privesc | [📄 PDF](examples/FIND-build-infra-CVE-2024-1086_20260621T151612Z.pdf) |
-
----
-
 ## Environment state
 
 RubricAI maintains a versioned environment state file so the AI accumulates context across sessions rather than starting cold each time.
@@ -353,109 +352,6 @@ Set `RUBRICAI_ENV_DIR` to change the directory.
 | `standing_mitigations` | Controls that apply across all findings (WAF, ACL, etc.) |
 | `context_notes` | Free-form environment summary |
 | `session_log` | Append-only history of what each session assessed and learned |
-
-### Example: three-tier web application
-
-The environment below illustrates how the state file captures topology that affects scoring. Notice that `UserDB` (PII) and `AnalyticsDB` (non-sensitive) sit in the same network tier, but the AI uses `context_notes` and component notes to distinguish risk — a CVE in `PaymentAPI` touching `UserDB` scores differently from the same CVE in `ReportingService` touching `AnalyticsDB`.
-
-```
-Internet
-   │
-   ▼
-[ WAF / CDN ]
-   │
-   ▼
-[ WebApp ]  ←── internet_exposed
-   │
-   ▼
-[ PaymentAPI ]  ←── internal (called by WebApp only)
-   │         \
-   ▼           ▼
-[ UserDB ]   [ AnalyticsDB ]
-  (PII,         (aggregated
-  payment        metrics,
-  records)       no PII)
-```
-
-```json
-{
-  "schema_version": "1",
-  "version": 1,
-  "created_at": "2025-01-01T00:00:00Z",
-  "updated_at": "2025-01-01T00:00:00Z",
-  "components": [
-    {
-      "name": "WebApp",
-      "version": "4.2.1",
-      "type": "service",
-      "environment": "production",
-      "hosting": "cloud",
-      "notes": "React SPA served via CloudFront. Calls PaymentAPI for transactions."
-    },
-    {
-      "name": "PaymentAPI",
-      "version": "2.0.3",
-      "type": "service",
-      "environment": "production",
-      "hosting": "cloud",
-      "notes": "Internal REST API. Handles payment processing. Has read/write access to UserDB."
-    },
-    {
-      "name": "UserDB",
-      "version": "PostgreSQL 15",
-      "type": "service",
-      "environment": "production",
-      "hosting": "cloud",
-      "notes": "Contains PII (name, email, address) and payment card tokens. Accessible only from PaymentAPI."
-    },
-    {
-      "name": "AnalyticsDB",
-      "version": "PostgreSQL 15",
-      "type": "service",
-      "environment": "production",
-      "hosting": "cloud",
-      "notes": "Aggregated metrics only — no PII, no payment data. Accessible from ReportingService."
-    },
-    {
-      "name": "ReportingService",
-      "version": "1.1.0",
-      "type": "service",
-      "environment": "production",
-      "hosting": "cloud",
-      "notes": "Internal dashboard backend. Reads from AnalyticsDB only."
-    }
-  ],
-  "network": {
-    "internet_exposed_services": ["WebApp"],
-    "constrained_external": [],
-    "internal_only": ["PaymentAPI", "ReportingService"],
-    "local_only": ["UserDB", "AnalyticsDB"],
-    "notes": "WebApp is the only internet-facing entry point. All internal services communicate over a private VPC subnet. Databases are not reachable from the application tier without going through their respective service."
-  },
-  "standing_mitigations": [
-    {
-      "type": "waf_rule",
-      "description": "Cloudflare WAF in front of WebApp — OWASP Core Rule Set enabled",
-      "applies_to": ["WebApp"],
-      "verified": false,
-      "notes": "Reduces surface for common web attack patterns but does not mitigate logic flaws or auth bypasses in PaymentAPI."
-    },
-    {
-      "type": "acl_segmentation",
-      "description": "VPC security groups restrict UserDB to inbound connections from PaymentAPI only (port 5432)",
-      "applies_to": ["UserDB"],
-      "verified": false,
-      "notes": "ACL is causal for reachability claims about UserDB — a vulnerability in UserDB is only reachable via PaymentAPI."
-    }
-  ],
-  "context_notes": "Three-tier e-commerce platform. WebApp is public-facing; PaymentAPI and both databases are internal. UserDB holds PII and payment tokens and is the highest-sensitivity component. AnalyticsDB holds only aggregated, non-personal metrics. Prioritise findings that affect PaymentAPI or UserDB — lateral movement from WebApp to PaymentAPI is the primary threat path.",
-  "session_log": []
-}
-```
-
-The key contrast: a finding in `PaymentAPI` with `data_access` utility scores higher because `context_notes` flags it as the path to PII. A finding in `ReportingService` with the same CVE scores lower — `AnalyticsDB` holds no sensitive data and the service is further from the internet entry point.
-
----
 
 ## Evidence
 
