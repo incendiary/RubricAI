@@ -84,6 +84,6 @@ jobs:
 
       # Verified credential detection — confirms live secrets via provider APIs
       - name: TruffleHog OSS
-        uses: trufflesecurity/trufflehog@v3.95.5
+        uses: trufflesecurity/trufflehog@v3.95.7
         with:
           extra_args: --results=verified,unknown
