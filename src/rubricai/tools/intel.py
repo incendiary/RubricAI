@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ..fetchers import epss as epss_fetcher
+from ..fetchers import gh_advisory as gh_advisory_fetcher
 from ..fetchers import kev as kev_fetcher
 from ..fetchers import nvd as nvd_fetcher
 from ..fetchers import poc as poc_fetcher
@@ -55,6 +56,8 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     if "epss" in sources:
         fetches["epss"] = epss_fetcher.fetch(cve_id)
     if "cvss" in sources or "poc" in sources or "vendor" in sources:
+        # Try GitHub Advisory first (better ecosystem coverage), then NVD
+        fetches["gh_advisory"] = gh_advisory_fetcher.fetch(cve_id)
         fetches["nvd"] = nvd_fetcher.fetch(cve_id)
 
     raw = dict(
@@ -67,14 +70,29 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
 
     kev_raw = raw.get("kev")
     epss_raw = raw.get("epss")
+    gh_advisory_record = raw.get("gh_advisory")
     nvd_record = raw.get("nvd")
 
-    # CVSS (derived from NVD record)
+    # Prefer GitHub Advisory if available, otherwise use NVD
+    primary_record = gh_advisory_record or nvd_record
+
+    # CVSS (from GitHub Advisory if available, otherwise NVD)
     cvss = None
-    if "cvss" in sources and nvd_record:
-        cvss_raw = await nvd_fetcher.fetch_cvss(cve_id)
-        if cvss_raw:
-            cvss = CvssInfo.model_validate(cvss_raw)
+    if "cvss" in sources and primary_record:
+        if gh_advisory_record:
+            # GitHub Advisory includes CVSS data directly
+            cvss_raw = {
+                "base": gh_advisory_record.get("cvss_base"),
+                "vector": gh_advisory_record.get("cvss_vector", "N/A"),
+                "version": gh_advisory_record.get("cvss_version", "3.1"),
+            }
+            if cvss_raw.get("base"):
+                cvss = CvssInfo.model_validate(cvss_raw)
+        elif nvd_record:
+            # Fetch CVSS from NVD if using NVD record
+            cvss_raw = await nvd_fetcher.fetch_cvss(cve_id)
+            if cvss_raw:
+                cvss = CvssInfo.model_validate(cvss_raw)
 
     # PoC (uses cached NVD record — no extra HTTP call)
     poc = None
@@ -92,12 +110,16 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
         active_sources.append("CISA_KEV")
     if epss_raw:
         active_sources.append("FIRST_EPSS")
+    if gh_advisory_record:
+        active_sources.append("GITHUB_ADVISORY")
     if nvd_record:
         active_sources.append("NVD")
 
-    # Extract English CVE description from NVD record
+    # Extract English CVE description (prefer GitHub Advisory, fallback to NVD)
     description: str | None = None
-    if nvd_record:
+    if gh_advisory_record:
+        description = gh_advisory_record.get("description")
+    elif nvd_record:
         description = next(
             (
                 d["value"]
@@ -107,7 +129,7 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
             None,
         )
 
-    # Automatable signal (for BOD 26-04) — extracted from Vulnrichment / CVSS vector
+    # Automatable signal — NVD only (GitHub Advisory lacks this field)
     automatable: bool | None = None
     if nvd_record:
         automatable = nvd_fetcher.extract_automatable(nvd_record)

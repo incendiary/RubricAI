@@ -8,6 +8,9 @@ Usage:
     # Write the merged config
     python scripts/install_claude_config.py --write
 
+    # Force writing even if the RubricAI entry point is missing
+    python scripts/install_claude_config.py --write --force
+
     # Custom config path (e.g. non-standard Claude install)
     python scripts/install_claude_config.py --config ~/my-config.json --write
 
@@ -63,6 +66,24 @@ def _rubricai_entry(project_root: pathlib.Path) -> dict:
     }
 
 
+def _entry_point_exists(project_root: pathlib.Path) -> bool:
+    entry = pathlib.Path(_rubricai_entry(project_root)["command"])
+    return entry.exists()
+
+
+def _print_setup_steps(project_root: pathlib.Path) -> None:
+    root = project_root.resolve()
+    print("Error: RubricAI entry point not found.", file=sys.stderr)
+    print("Set up the local virtual environment first:", file=sys.stderr)
+    print(file=sys.stderr)
+    print(f"  cd {root}", file=sys.stderr)
+    print("  python3 -m venv .venv", file=sys.stderr)
+    print("  source .venv/bin/activate", file=sys.stderr)
+    print('  pip install -e ".[dev]"', file=sys.stderr)
+    print(file=sys.stderr)
+    print("Then rerun this script, or pass --force to write anyway.", file=sys.stderr)
+
+
 def _merge(existing: dict, project_root: pathlib.Path) -> dict:
     merged = dict(existing)
     merged.setdefault("mcpServers", {})
@@ -104,9 +125,18 @@ def main() -> None:
         action="store_true",
         help="Write the merged config to disk (default: dry-run / preview only)",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Write the config even if the RubricAI entry point is missing",
+    )
     args = parser.parse_args()
 
     config_path: pathlib.Path = args.config or _default_config_path()
+
+    if not _entry_point_exists(args.cwd) and not args.force:
+        _print_setup_steps(args.cwd)
+        sys.exit(1)
 
     if config_path.exists():
         try:
