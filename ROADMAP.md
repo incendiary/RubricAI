@@ -307,14 +307,16 @@ creates a permanent empty environment that then appears in `env_list`.
 
 | | |
 |-|-|
-| Priority | High (weasyprint and urllib3 advisories) |
+| Priority | **Critical** (41 open alerts including 2 critical; see alert baseline below) |
 | Model / effort | Sonnet 5.5 for majors, Haiku 5.5 for patch bumps / M |
 | Depends on | D-1 |
 | Files | `requirements-lock.txt`, `pyproject.toml`, workflow files |
 
 **Do.** Use the `github-morning-run` skill. Merge patch and minor Dependabot PRs one at a time (CI must be green on the rebased branch). Handle individually, never batched: `weasyprint` 69 to 70 (#149; run `pytest tests/test_report.py` and regenerate one PDF to eyeball), `cryptography` 49 to 50 (#145), `actions/checkout` 6 to 7 (#125), `actions/setup-python` 6 to 7 (#142), `trufflehog` (#148). The lock also needs `urllib3>=2.8.0`; if no PR exists, bump it by hand. Re-run `pip-audit` and record the result in the PR.
 
-**Verify.** `pip-audit -r requirements-lock.txt` reports only dev-only transitive items (virtualenv), or nothing.
+**Alert baseline (GitHub Dependabot, 2026-10-08): 41 open alerts, 2 critical, 23 high, 16 moderate, all in `requirements-lock.txt`.** This is far more than the local `pip-audit` run found, so treat Dependabot as the source of truth. Critical: PyJWT (fixed in 2.14.0) and anyio (fixed in 4.14.2, PR #150). High: Pillow (12.3.0, PR #141), cryptography (50.0.0, PR #145), mcp (1.28.1, PR #140), urllib3 (2.8.0), virtualenv (21.7.13, dev-only). Moderate includes setuptools, weasyprint and pydantic-settings. PyJWT has one moderate alert (CVE-2026-103001) with no patched release yet; record it as accepted risk in the PR if still unpatched. Check whether PyJWT and Pillow are actually imported at runtime (`pip show -f`, `pipdeptree -r -p pyjwt`); if they are only transitive and unused, say so in the PR but still bump.
+
+**Verify.** The Dependabot alerts page shows no critical or high alerts (`gh api "repos/incendiary/RubricAI/dependabot/alerts?state=open" -q length`), and `pip-audit -r requirements-lock.txt` reports only dev-only transitive items (virtualenv), or nothing.
 
 #### RA-10: Close test gaps on resilience paths
 
