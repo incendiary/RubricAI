@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from src.rubricai.schemas.evidence import EvidenceItem
 from src.rubricai.tools.environment import (
     env_list,
-    env_migrate_legacy,
     env_read,
     env_write,
 )
@@ -32,7 +31,6 @@ def test_env_list_empty(tmp_path, monkeypatch):
     result = env_list()
     assert result["environments"] == []
     assert result["count"] == 0
-    assert result["needs_migration"] is False
 
 
 def test_env_list_after_write(tmp_path, monkeypatch):
@@ -42,15 +40,6 @@ def test_env_list_after_write(tmp_path, monkeypatch):
     result = env_list()
     assert set(result["environments"]) == {"production", "staging"}
     assert result["count"] == 2
-
-
-def test_env_list_detects_legacy_files(tmp_path, monkeypatch):
-    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    # Write a legacy flat state file at root
-    (tmp_path / "state_v001.json").write_text('{"version": 1}')
-    result = env_list()
-    assert result["needs_migration"] is True
-    assert result["legacy_files"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -139,31 +128,6 @@ def test_multiple_environments_isolated(tmp_path, monkeypatch):
     stage = env_read("staging")
     assert prod["context_notes"] == "prod notes"
     assert stage["context_notes"] == "staging notes"
-
-
-# ---------------------------------------------------------------------------
-# env_migrate_legacy
-# ---------------------------------------------------------------------------
-
-
-def test_env_migrate_legacy(tmp_path, monkeypatch):
-    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
-    # Simulate legacy flat state at root
-    legacy_content = '{"schema_version": "1", "version": 1, "components": []}'
-    (tmp_path / "state_v001.json").write_text(legacy_content)
-    (tmp_path / "state_latest.json").write_text(legacy_content)
-
-    result = env_migrate_legacy("legacy-prod")
-    assert result["migrated"] >= 1
-    assert result["environment_name"] == "legacy-prod"
-
-    # Legacy files should now be in the environments directory
-    migrated_dir = tmp_path / "environments" / "legacy-prod"
-    assert (migrated_dir / "state_v001.json").exists()
-
-    # env_list should no longer flag migration needed
-    listing = env_list()
-    assert listing["needs_migration"] is False
 
 
 # ---------------------------------------------------------------------------

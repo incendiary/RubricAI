@@ -12,7 +12,6 @@ from fastmcp import FastMCP
 from .tools.bom import bom_check as _bom_check
 from .tools.bom import bom_update as _bom_update
 from .tools.environment import env_list as _env_list
-from .tools.environment import env_migrate_legacy as _env_migrate_legacy
 from .tools.environment import env_read as _env_read
 from .tools.environment import env_write as _env_write
 from .tools.intel import lookup as _intel_lookup
@@ -163,9 +162,7 @@ def env_list() -> dict[str, Any]:
     to determine which environment the engineer is working in.
 
     Returns:
-        Dict with ``environments`` (list of names), ``count``, and
-        ``needs_migration`` (True if legacy flat state files exist from
-        a pre-v0.8 install — prompt the engineer to name them).
+        Dict with ``environments`` (list of names) and ``count``.
     """
     return _env_list()
 
@@ -198,20 +195,6 @@ def env_write(state: dict[str, Any], environment_name: str) -> dict[str, Any]:
         environment_name: Target environment (same as used in env_read).
     """
     return _env_write(state, environment_name)
-
-
-@mcp.tool()
-def env_migrate_legacy(environment_name: str) -> dict[str, Any]:
-    """Migrate pre-v0.8 flat state files into a named environment.
-
-    Only needed once after upgrading from v0.7 or earlier. If
-    ``env_list()`` returns ``needs_migration: true``, ask the engineer
-    what to call the existing environment and call this tool.
-
-    Args:
-        environment_name: Name to assign to the migrated environment.
-    """
-    return _env_migrate_legacy(environment_name)
 
 
 @mcp.tool()

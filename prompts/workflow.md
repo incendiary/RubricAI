@@ -21,10 +21,6 @@ Call `env_list()` immediately, then ask:
 
 Wait for the engineer's answer before doing anything else.
 
-**If `needs_migration: true`** (legacy flat state files from v0.7 or earlier):
-> "I have an existing environment state but it needs a name. What would you like to call it?"
-> → Call `env_migrate_legacy(environment_name=<answer>)` to migrate, then proceed.
-
 ### Step 2 — Load the environment
 
 ```
