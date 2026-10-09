@@ -55,7 +55,7 @@ ignore = ["S101"]  # allow assert in tests
 "src/rubricai/tools/policy.py" = ["E501"]
 "scripts/render_prompt.py" = ["E501"]
 "tests/test_bod_26_04.py" = ["E501"]
-"src/rubricai/tools/project_scan.py" = ["E501", "S314"]
+"src/rubricai/tools/project_scan.py" = ["E501"]
 
 [tool.isort]
 profile = "black"

@@ -25,10 +25,21 @@ def _validate_path(path_str: str) -> Path:
 
 # --- Individual parsers, each returns list[dict] of BOM entries ---
 
+_MAX_MANIFEST_BYTES = 1_048_576
+# Matched on bytes with NUL stripped, so UTF-16 encoded declarations are caught too.
+_XML_DTD_RE = re.compile(rb"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
+
+
+def _is_oversized(path: Path) -> bool:
+    """Manifests above the size cap are skipped, not parsed."""
+    return path.stat().st_size > _MAX_MANIFEST_BYTES
+
 
 def _parse_requirements_txt(root: Path) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     for req_file in sorted(root.glob("requirements*.txt")):
+        if _is_oversized(req_file):
+            continue
         for line in req_file.read_text(encoding="utf-8", errors="replace").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or line.startswith("-"):
@@ -47,7 +58,7 @@ def _parse_requirements_txt(root: Path) -> list[dict[str, Any]]:
 
 def _parse_pyproject_toml(root: Path) -> list[dict[str, Any]]:
     pyproject = root / "pyproject.toml"
-    if not pyproject.exists():
+    if not pyproject.exists() or _is_oversized(pyproject):
         return []
     try:
         data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
@@ -68,7 +79,7 @@ def _parse_pyproject_toml(root: Path) -> list[dict[str, Any]]:
 
 def _parse_package_json(root: Path) -> list[dict[str, Any]]:
     pkg = root / "package.json"
-    if not pkg.exists():
+    if not pkg.exists() or _is_oversized(pkg):
         return []
     try:
         data = json.loads(pkg.read_text(encoding="utf-8"))
@@ -85,10 +96,14 @@ def _parse_package_json(root: Path) -> list[dict[str, Any]]:
 
 def _parse_pom_xml(root: Path) -> list[dict[str, Any]]:
     pom = root / "pom.xml"
-    if not pom.exists():
+    if not pom.exists() or _is_oversized(pom):
+        return []
+    data = pom.read_bytes()
+    # Entity expansion needs a DTD or ENTITY declaration, so refuse those first.
+    if _XML_DTD_RE.search(data.replace(b"\x00", b"")):
         return []
     try:
-        tree = ET.parse(pom)
+        tree = ET.fromstring(data)  # noqa: S314  DTD/ENTITY rejected above
     except Exception:
         return []
     ns = {"m": "http://maven.apache.org/POM/4.0.0"}
@@ -112,7 +127,7 @@ def _parse_pom_xml(root: Path) -> list[dict[str, Any]]:
 
 def _parse_go_mod(root: Path) -> list[dict[str, Any]]:
     gomod = root / "go.mod"
-    if not gomod.exists():
+    if not gomod.exists() or _is_oversized(gomod):
         return []
     entries = []
     in_require = False
@@ -135,7 +150,7 @@ def _parse_go_mod(root: Path) -> list[dict[str, Any]]:
 
 def _parse_gemfile_lock(root: Path) -> list[dict[str, Any]]:
     gemfile = root / "Gemfile.lock"
-    if not gemfile.exists():
+    if not gemfile.exists() or _is_oversized(gemfile):
         return []
     entries = []
     in_specs = False
@@ -173,6 +188,8 @@ def _parse_terraform(root: Path) -> list[dict[str, Any]]:
     )
 
     for tf in tf_files:
+        if _is_oversized(tf):
+            continue
         text = tf.read_text(encoding="utf-8", errors="replace")
         # Required providers block
         req_block = re.search(r"required_providers\s*\{([^}]+)\}", text, re.DOTALL)
@@ -205,7 +222,7 @@ def _parse_terraform(root: Path) -> list[dict[str, Any]]:
 
 def _parse_dockerfile(root: Path) -> list[dict[str, Any]]:
     dockerfile = root / "Dockerfile"
-    if not dockerfile.exists():
+    if not dockerfile.exists() or _is_oversized(dockerfile):
         return []
     entries = []
     for line in dockerfile.read_text(encoding="utf-8").splitlines():
@@ -227,6 +244,8 @@ def _parse_docker_compose(root: Path) -> list[dict[str, Any]]:
         if compose.exists():
             break
     else:
+        return []
+    if _is_oversized(compose):
         return []
     try:
         import yaml  # optional — not in stdlib
