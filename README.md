@@ -485,7 +485,6 @@ Evidence type values: `firewall_policy`, `network_config`, `acl_rule`, `waf_conf
 | `env_list` | List all named environments stored on disk (call at session start) |
 | `env_read` | Read the current versioned state for a named environment |
 | `env_write` | Write a versioned update to the environment state |
-| `env_migrate_legacy` | Migrate pre-v0.8 flat state files into a named environment |
 | `policy_get` | Return the current CHML policy definition for auditability |
 | `bom_update` | Store or replace the Bill of Materials for a named environment |
 | `bom_check` | Check all BOM components for CVEs published or modified recently |
