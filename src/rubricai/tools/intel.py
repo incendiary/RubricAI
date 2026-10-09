@@ -76,23 +76,23 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     # Prefer GitHub Advisory if available, otherwise use NVD
     primary_record = gh_advisory_record or nvd_record
 
-    # CVSS (from GitHub Advisory if available, otherwise NVD)
+    # CVSS: use GitHub's only when it carries both score and vector, else NVD
     cvss = None
     if "cvss" in sources and primary_record:
-        if gh_advisory_record:
-            # GitHub Advisory includes CVSS data directly
+        cvss_raw = None
+        if gh_advisory_record and (
+            gh_advisory_record.get("cvss_base")
+            and gh_advisory_record.get("cvss_vector")
+        ):
             cvss_raw = {
-                "base": gh_advisory_record.get("cvss_base"),
-                "vector": gh_advisory_record.get("cvss_vector", "N/A"),
-                "version": gh_advisory_record.get("cvss_version", "3.1"),
+                "base": gh_advisory_record["cvss_base"],
+                "vector": gh_advisory_record["cvss_vector"],
+                "version": gh_advisory_record.get("cvss_version") or "unknown",
             }
-            if cvss_raw.get("base"):
-                cvss = CvssInfo.model_validate(cvss_raw)
         elif nvd_record:
-            # Fetch CVSS from NVD if using NVD record
             cvss_raw = await nvd_fetcher.fetch_cvss(cve_id)
-            if cvss_raw:
-                cvss = CvssInfo.model_validate(cvss_raw)
+        if cvss_raw:
+            cvss = CvssInfo.model_validate(cvss_raw)
 
     # PoC (uses cached NVD record — no extra HTTP call)
     poc = None
@@ -115,11 +115,9 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     if nvd_record:
         active_sources.append("NVD")
 
-    # Extract English CVE description (prefer GitHub Advisory, fallback to NVD)
+    # English description: prefer NVD (GitHub `summary` is only a title)
     description: str | None = None
-    if gh_advisory_record:
-        description = gh_advisory_record.get("description")
-    elif nvd_record:
+    if nvd_record:
         description = next(
             (
                 d["value"]
@@ -128,6 +126,8 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
             ),
             None,
         )
+    if description is None and gh_advisory_record:
+        description = gh_advisory_record.get("description")
 
     # Automatable signal — NVD only (GitHub Advisory lacks this field)
     automatable: bool | None = None

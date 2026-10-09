@@ -11,6 +11,7 @@ Note: fcntl-based file locking elsewhere in this project is Linux/macOS only.
 
 import asyncio
 import logging
+import os
 
 import httpx
 
@@ -18,7 +19,17 @@ _logger = logging.getLogger(__name__)
 
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 1.0  # seconds — doubles each retry (1, 2, 4)
-_TIMEOUT_WINDOWS = (5, 10, 30)  # escalating timeout windows in seconds
+
+
+def _timeout_windows() -> tuple[int, ...]:
+    """Escalating windows (5s, 10s, cap); cap is RUBRICAI_HTTP_TIMEOUT, default 30."""
+    try:
+        cap = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
+    except ValueError:
+        cap = 30
+    if cap <= 0:
+        cap = 30
+    return (5, 10, min(30, cap))
 
 
 async def fetch_with_retry(
@@ -77,6 +88,10 @@ async def fetch_with_retry(
 
             return resp
 
+        except httpx.TimeoutException:
+            # Escalation to a longer window is the retry for timeouts
+            raise
+
         except httpx.HTTPError as exc:
             last_exc = exc
             if attempt < max_retries:
@@ -103,15 +118,17 @@ async def fetch_with_timeout_escalation(
     method: str,
     url: str,
     *,
-    timeout_windows: tuple[int, ...] = _TIMEOUT_WINDOWS,
+    timeout_windows: tuple[int, ...] | None = None,
     max_retries: int = _MAX_RETRIES,
     **kwargs,
 ) -> httpx.Response:
     """Execute an HTTP request with automatic timeout escalation on timeout errors.
 
-    Tries the request with increasing timeout windows (default: 5s → 10s → 30s).
+    Tries the request with increasing timeout windows (default: 5s → 10s → 30s,
+    the last capped by RUBRICAI_HTTP_TIMEOUT).
     If a timeout occurs, escalates to the next window and retries.
-    Within each window, uses standard exponential backoff (retry.py logic).
+    Within each window, 429/5xx/network errors use exponential backoff;
+    timeouts are not retried in-window.
 
     This is useful for APIs that may be slow or behind congested networks; it
     avoids a quick failure on constrained timeouts while still failing fast if
@@ -131,6 +148,7 @@ async def fetch_with_timeout_escalation(
         httpx.HTTPError: After all timeout windows and retries exhausted.
     """
     last_exc: Exception | None = None
+    timeout_windows = timeout_windows or _timeout_windows()
 
     for timeout_attempt, timeout_sec in enumerate(timeout_windows):
         try:
