@@ -8,7 +8,10 @@ services:
       - RUBRICAI_REPORT_DIR=/reports
       - RUBRICAI_ENV_DIR=/state
       - NVD_API_KEY=${NVD_API_KEY:-}
+      # Required: the SSE transport refuses to start without a key.
       - RUBRICAI_API_KEY=${RUBRICAI_API_KEY:-}
+      # Unauthenticated start, only for trusted local testing:
+      # - RUBRICAI_ALLOW_NO_AUTH=1
     volumes:
       # Host-mounted paths are writable by the container's rubricai user.
       # Do not mount sensitive host directories here.

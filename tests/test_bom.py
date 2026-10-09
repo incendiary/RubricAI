@@ -1,5 +1,6 @@
 """Tests for bom_update and bom_check tools."""
 
+import asyncio
 import json
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
@@ -272,6 +273,68 @@ class TestBomCheck:
             await bom_check(_ENV)
 
         assert mock_search.call_count == 3
+
+
+class TestBomConcurrency:
+    @pytest.mark.asyncio
+    async def test_bom_update_during_check_survives(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": "old", "version": "1"}], _ENV)
+        started, release = asyncio.Event(), asyncio.Event()
+
+        async def slow_search(*args, **kwargs):
+            started.set()
+            await release.wait()
+            return []
+
+        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=slow_search):
+            task = asyncio.create_task(bom_check(_ENV))
+            await started.wait()
+            bom_update([{"name": "new", "version": "2"}], _ENV)
+            release.set()
+            await task
+
+        state = json.loads((_env_state_dir(tmp_path) / "state_latest.json").read_text())
+        assert [e["name"] for e in state["bom"]] == ["new"]
+        assert state["bom"][0]["last_checked"] is None
+        assert state["version"] == 3
+
+    @pytest.mark.asyncio
+    async def test_results_keep_bom_order_under_concurrency(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        names = [f"pkg{i}" for i in range(6)]
+        bom_update([{"name": n, "version": "1"} for n in names], _ENV)
+
+        async def search(name, **kwargs):
+            # Earlier components finish last
+            await asyncio.sleep(0.05 * (len(names) - names.index(name)) / 6)
+            return [{"id": f"CVE-{name}"}]
+
+        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=search):
+            result = await bom_check(_ENV)
+
+        assert list(result["findings"]) == [f"{n} 1" for n in names]
+
+    @pytest.mark.asyncio
+    async def test_lookups_limited_to_three(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        bom_update([{"name": f"p{i}", "version": "1"} for i in range(8)], _ENV)
+        active = peak = 0
+
+        async def search(name, **kwargs):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return []
+
+        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=search):
+            await bom_check(_ENV)
+
+        assert peak == 3
 
 
 class TestBomPathTraversal:

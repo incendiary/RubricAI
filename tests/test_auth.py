@@ -108,3 +108,8 @@ class TestWithAuth:
         """/health is exempt regardless of any Authorization header sent."""
         resp = self.client.get("/health", headers={"Authorization": "Bearer wrong"})
         assert resp.status_code == 200
+
+    def test_wrong_token_of_equal_length_returns_401(self):
+        wrong = "x" * len(_TEST_KEY)
+        resp = self.client.get("/test", headers={"Authorization": f"Bearer {wrong}"})
+        assert resp.status_code == 401

@@ -4,6 +4,7 @@ import fcntl  # Unix only — Windows deployments must use Docker (Linux contain
 import json
 import os
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -55,6 +56,39 @@ def _current_version(env_dir: Path) -> int:
         if m:
             versions.append(int(m.group(1)))
     return max(versions, default=0)
+
+
+def _write_next_version(
+    env_dir: Path, build: Callable[[], dict[str, Any]]
+) -> tuple[int, Path]:
+    """Allocate the next version and write ``state_vNNN.json`` + ``state_latest.json``.
+
+    ``build`` runs inside the exclusive lock, so it may read the latest state and
+    return a modified copy without losing concurrent writes.
+    """
+    # Exclusive file lock prevents TOCTOU race on concurrent version increment
+    lock_path = env_dir / ".write.lock"
+    lock_path.touch(exist_ok=True)
+    with open(lock_path) as lock_fd:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX)
+        try:
+            next_ver = _current_version(env_dir) + 1
+
+            validated = EnvironmentState.model_validate(
+                {
+                    **build(),
+                    "version": next_ver,
+                    "updated_at": datetime.now(tz=UTC).isoformat(),
+                }
+            )
+
+            versioned_path = env_dir / f"state_v{next_ver:03d}.json"
+            content = json.dumps(validated.model_dump(mode="json"), indent=2)
+            versioned_path.write_text(content, encoding="utf-8")
+            (env_dir / "state_latest.json").write_text(content, encoding="utf-8")
+        finally:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    return next_ver, versioned_path
 
 
 def env_list() -> dict[str, Any]:
@@ -123,28 +157,9 @@ def env_write(state: dict[str, Any], environment_name: str) -> dict[str, Any]:
     name = _validate_env_name(environment_name)
     d = _env_dir(name)
 
-    # Exclusive file lock prevents TOCTOU race on concurrent version increment
-    lock_path = d / ".write.lock"
-    lock_path.touch(exist_ok=True)
-    with open(lock_path) as lock_fd:
-        fcntl.flock(lock_fd, fcntl.LOCK_EX)
-        try:
-            next_ver = _current_version(d) + 1
-
-            validated = EnvironmentState.model_validate(
-                {
-                    **{k: v for k, v in state.items() if k != "environment_name"},
-                    "version": next_ver,
-                    "updated_at": datetime.now(tz=UTC).isoformat(),
-                }
-            )
-
-            versioned_path = d / f"state_v{next_ver:03d}.json"
-            content = json.dumps(validated.model_dump(mode="json"), indent=2)
-            versioned_path.write_text(content, encoding="utf-8")
-            (d / "state_latest.json").write_text(content, encoding="utf-8")
-        finally:
-            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    next_ver, versioned_path = _write_next_version(
+        d, lambda: {k: v for k, v in state.items() if k != "environment_name"}
+    )
 
     return {
         "version": next_ver,

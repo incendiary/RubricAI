@@ -18,13 +18,6 @@ _TTL_HOURS = 24
 _SEARCH_TTL_HOURS = 4  # BOM checks are "what's new" — shorter TTL
 
 
-def _timeout() -> int:
-    try:
-        return int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
-    except (ValueError, TypeError):
-        return 30
-
-
 _cache = FileCache()
 
 

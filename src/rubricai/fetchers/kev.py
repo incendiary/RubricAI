@@ -4,7 +4,6 @@ Downloads the full catalog once per TTL window and indexes it by CVE ID.
 """
 
 import logging
-import os
 
 import httpx
 
@@ -16,13 +15,6 @@ _NS = "kev"
 _CATALOG_KEY = "catalog"
 _TTL_HOURS = 24
 _logger = logging.getLogger(__name__)
-
-
-def _timeout() -> int:
-    try:
-        return int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
-    except (ValueError, TypeError):
-        return 30
 
 
 _cache = FileCache()
