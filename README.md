@@ -156,8 +156,8 @@ There is no slash command — the system prompt is the trigger. Every conversati
 ```bash
 cp .env.example .env
 # Edit .env: set NVD_API_KEY if you have one
-# Optional: set RUBRICAI_API_KEY for Bearer token auth
-# Optional: set RUBRICAI_TLS_CERT and RUBRICAI_TLS_KEY for HTTPS
+# Required: set RUBRICAI_API_KEY (the SSE transport refuses to start without it)
+# Optional: set RUBRICAI_TLS_CERT and RUBRICAI_TLS_KEY together for HTTPS
 
 docker compose up --build
 ```
@@ -165,8 +165,17 @@ docker compose up --build
 Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host.
 
 > **Security note:** The container runs as a non-root user (`rubricai`). Set
-> `RUBRICAI_API_KEY` in production to require Bearer token authentication on all
-> HTTP requests.
+> `RUBRICAI_API_KEY` to require Bearer token authentication on all HTTP requests
+> (`/health` stays open for liveness probes). With `RUBRICAI_TRANSPORT=sse`, the
+> server exits at startup if the key is unset, unless `RUBRICAI_ALLOW_NO_AUTH=1`
+> is set explicitly. It also exits if only one of `RUBRICAI_TLS_CERT` and
+> `RUBRICAI_TLS_KEY` is set, rather than silently serving plain HTTP.
+>
+> **Bind address:** FastMCP 3.4.2 (the locked version) binds to `127.0.0.1:8000` by
+> default, and `src/main.py` does not override it. Setting `FASTMCP_HOST=0.0.0.0`
+> makes the server listen on all interfaces. The container path (published port
+> reachability with the default bind) has not been verified end to end, as no
+> Docker environment was available when this was written.
 
 ### OpenAI (GPT-4o, o3, Agents SDK)
 
@@ -536,9 +545,10 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | `RUBRICAI_LOG_FORMAT` | `text` | Log format (`text` for human-readable, `json` for structured) |
 | `RUBRICAI_LOG_DIR` | `~/.local/share/rubricai` | Directory for log file (`rubricai.log`) |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
-| `RUBRICAI_API_KEY` | *(empty)* | Optional — require Bearer token auth on SSE/HTTP transport |
+| `RUBRICAI_API_KEY` | *(empty)* | Bearer token for the SSE/HTTP transport. Required: `sse` refuses to start without it unless `RUBRICAI_ALLOW_NO_AUTH=1` |
+| `RUBRICAI_ALLOW_NO_AUTH` | *(empty)* | Set to `1` to start `sse` without `RUBRICAI_API_KEY` (trusted local testing only) |
 | `RUBRICAI_TLS_CERT` | *(empty)* | Path to PEM certificate file for HTTPS (SSE transport) |
-| `RUBRICAI_TLS_KEY` | *(empty)* | Path to PEM private key file (required with TLS_CERT) |
+| `RUBRICAI_TLS_KEY` | *(empty)* | Path to PEM private key file (must be set together with TLS_CERT) |
 | `RUBRICAI_CRITICAL_DAYS` | `3` | Override Critical lane SLA (days, or `patch_train`) |
 | `RUBRICAI_HIGH_DAYS` | `7` | Override High lane SLA (days, or `patch_train`) |
 | `RUBRICAI_MEDIUM_DAYS` | `patch_train` | Override Medium lane SLA (days, or `patch_train`) |
