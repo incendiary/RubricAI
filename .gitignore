@@ -52,3 +52,6 @@ prompts/out/
 # Environment state files (versioned at runtime — template is tracked)
 environment/state_v*.json
 environment/state_latest.json
+
+# Serena rewrites its project config on every upgrade; keep it local
+.serena/
