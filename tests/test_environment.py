@@ -1,12 +1,15 @@
 """Tests for env_read / env_write tools and EvidenceItem integration."""
 
 import json
+import threading
 
 import pytest
 from pydantic import ValidationError
 
 from src.rubricai.schemas.evidence import EvidenceItem
+from src.rubricai.tools.environment import _env_dir as _real_env_dir
 from src.rubricai.tools.environment import (
+    _write_next_version,
     env_list,
     env_read,
     env_write,
@@ -303,3 +306,22 @@ def test_env_write_to_json_is_valid(tmp_path, monkeypatch):
     raw = json.loads((_env_dir(tmp_path) / "state_v001.json").read_text())
     assert raw["schema_version"] == "1"
     assert raw["version"] == 1
+
+
+def test_write_next_version_concurrent_threads(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    d = _real_env_dir("race-env")
+    versions: list[int] = []
+
+    def worker():
+        for _ in range(20):
+            versions.append(_write_next_version(d, dict)[0])
+
+    threads = [threading.Thread(target=worker) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert sorted(versions) == list(range(1, 41))
+    assert len(list(d.glob("state_v*.json"))) == 40

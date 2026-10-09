@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -12,7 +12,7 @@ from ..fetchers import nvd as nvd_fetcher
 from ..fetchers import osv as osv_fetcher
 from ..fetchers.osv import ECOSYSTEM_ALIASES
 from ..schemas.environment import BomEntry, EnvironmentState
-from .environment import _env_dir
+from .environment import _env_dir, _write_next_version
 
 _logger = logging.getLogger(__name__)
 
@@ -37,28 +37,6 @@ def _load_state(environment_name: str) -> EnvironmentState:
     return EnvironmentState()
 
 
-def _save_state(state: EnvironmentState, environment_name: str) -> str:
-    env_dir = _env_dir(environment_name)
-
-    def _current_version() -> int:
-        versions = []
-        for f in env_dir.glob("state_v*.json"):
-            m = re.fullmatch(r"state_v(\d+)\.json", f.name)
-            if m:
-                versions.append(int(m.group(1)))
-        return max(versions, default=0)
-
-    next_ver = _current_version() + 1
-    state.version = next_ver
-    state.updated_at = datetime.now(tz=UTC).isoformat()
-
-    content = json.dumps(state.model_dump(mode="json"), indent=2)
-    versioned = env_dir / f"state_v{next_ver:03d}.json"
-    versioned.write_text(content, encoding="utf-8")
-    (env_dir / "state_latest.json").write_text(content, encoding="utf-8")
-    return str(versioned)
-
-
 def bom_update(
     components: list[dict[str, Any]], environment_name: str
 ) -> dict[str, Any]:
@@ -73,12 +51,16 @@ def bom_update(
         Dict with ``stored`` (count), ``saved_to``, ``bom``, and ``environment_name``.
     """
     entries = [BomEntry.model_validate(c) for c in components]
-    state = _load_state(environment_name)
-    state.bom = entries
-    path = _save_state(state, environment_name)
+    _, path = _write_next_version(
+        _env_dir(environment_name),
+        lambda: {
+            **_load_state(environment_name).model_dump(mode="json"),
+            "bom": entries,
+        },
+    )
     return {
         "stored": len(entries),
-        "saved_to": path,
+        "saved_to": str(path),
         "environment_name": environment_name,
         "bom": [e.model_dump(mode="json") for e in entries],
     }
@@ -109,7 +91,7 @@ async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]
     findings: dict[str, list[dict]] = {}
     now = datetime.now(tz=UTC).isoformat()
 
-    for entry in state.bom:
+    async def _lookup(entry: BomEntry) -> list[dict]:
         osv_ecosystem = _resolve_ecosystem(entry.ecosystem, entry.type)
 
         # Maven packages in OSV require full groupId:artifactId coordinates
@@ -160,11 +142,32 @@ async def bom_check(environment_name: str, days_back: int = 7) -> dict[str, Any]
             entry.version,
             len(cves),
         )
-        entry.last_checked = now
+        return cves
+
+    # NVD allows 5 requests per 30s unauthenticated; stay below that.
+    sem = asyncio.Semaphore(3)
+
+    async def _bounded(entry: BomEntry) -> list[dict]:
+        async with sem:
+            return await _lookup(entry)
+
+    # gather preserves input order, so findings follow BOM order.
+    results = await asyncio.gather(*(_bounded(e) for e in state.bom))
+    for entry, cves in zip(state.bom, results, strict=True):
         if cves:
             findings[f"{entry.name} {entry.version}"] = cves
 
-    _save_state(state, environment_name)
+    checked = {(e.name, e.version) for e in state.bom}
+
+    def _merge_timestamps() -> dict[str, Any]:
+        # Re-read under the lock: apply only last_checked, never the stale BOM.
+        latest = _load_state(environment_name)
+        for e in latest.bom:
+            if (e.name, e.version) in checked:
+                e.last_checked = now
+        return latest.model_dump(mode="json")
+
+    _write_next_version(_env_dir(environment_name), _merge_timestamps)
 
     total = sum(len(v) for v in findings.values())
     return {
