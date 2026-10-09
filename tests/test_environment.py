@@ -325,3 +325,33 @@ def test_write_next_version_concurrent_threads(tmp_path, monkeypatch):
 
     assert sorted(versions) == list(range(1, 41))
     assert len(list(d.glob("state_v*.json"))) == 40
+
+
+# ---------------------------------------------------------------------------
+# env_read must not create environments (RA-4)
+# ---------------------------------------------------------------------------
+
+
+def test_env_read_unknown_name_creates_no_environment(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    state = env_read("typo-env")
+    assert state["version"] == 1
+    assert state["environment_name"] == "typo-env"
+    assert "typo-env" not in env_list()["environments"]
+    assert not (tmp_path / "environments" / "typo-env").exists()
+
+
+def test_env_read_existing_environment_returns_state(tmp_path, monkeypatch):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    env_write({"context_notes": "prod"}, "production")
+    state = env_read("production")
+    assert state["context_notes"] == "prod"
+    assert state["environment_name"] == "production"
+
+
+@pytest.mark.parametrize("bad_name", ["../x", "a/b", ""])
+def test_env_read_invalid_name_raises(tmp_path, monkeypatch, bad_name):
+    monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+    with pytest.raises(ValueError, match="Invalid environment name"):
+        env_read(bad_name)
+    assert env_list()["count"] == 0

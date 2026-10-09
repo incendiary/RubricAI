@@ -100,6 +100,13 @@ class TestBomCheck:
         assert "BOM is empty" in result["message"]
 
     @pytest.mark.asyncio
+    async def test_unknown_env_creates_no_directory(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
+        result = await bom_check("typo-env")
+        assert "BOM is empty" in result["message"]
+        assert not (tmp_path / "environments" / "typo-env").exists()
+
+    @pytest.mark.asyncio
     async def test_finds_cves_for_components(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
         bom_update([{"name": "nginx", "version": "1.20.0"}], _ENV)
