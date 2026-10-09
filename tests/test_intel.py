@@ -166,3 +166,68 @@ async def test_lookup_kev_not_listed():
     r = result["results"][0]
     assert r["kev"]["listed"] is False
     assert r["epss"] is None
+
+
+_GH_NO_SCORE = {"description": "Remote code injection in Log4j", "cvss_base": None}
+_GH_SCORED = {
+    **_GH_NO_SCORE,
+    "cvss_base": 10.0,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+    "cvss_version": "3.1",
+}
+_NVD_LOG4SHELL = {
+    **_MOCK_NVD_RECORD,
+    "descriptions": [
+        {
+            "lang": "en",
+            "value": "JNDI features allow an attacker who controls log messages "
+            "to execute arbitrary code loaded from LDAP servers.",
+        }
+    ],
+}
+
+
+async def _lookup_with_gh(gh_record):
+    with (
+        patch(
+            "src.rubricai.tools.intel.gh_advisory_fetcher.fetch",
+            new=AsyncMock(return_value=gh_record),
+        ),
+        patch(
+            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            new=AsyncMock(return_value=_NVD_LOG4SHELL),
+        ),
+        patch(
+            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            new=AsyncMock(
+                return_value={"base": 9.8, "vector": "CVSS:3.1/NVD", "version": "3.1"}
+            ),
+        ),
+        patch(
+            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            new=AsyncMock(
+                return_value={
+                    "available": False,
+                    "confidence": "unknown",
+                    "references": [],
+                }
+            ),
+        ),
+    ):
+        result = await lookup(["CVE-2021-44228"], include=["cvss", "poc"])
+    return result["results"][0]
+
+
+@pytest.mark.asyncio
+async def test_lookup_falls_back_to_nvd_cvss_when_github_unscored():
+    r = await _lookup_with_gh(_GH_NO_SCORE)
+    assert r["cvss"]["base"] == 9.8
+    assert "GITHUB_ADVISORY" in r["sources"]
+
+
+@pytest.mark.asyncio
+async def test_lookup_prefers_nvd_description_over_github_title():
+    r = await _lookup_with_gh(_GH_SCORED)
+    assert r["cvss"]["base"] == 10.0
+    assert r["description"].startswith("JNDI features")
+    assert "rce" in r["derived_finding_context"]["attacker_utility"]
