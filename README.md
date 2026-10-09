@@ -545,6 +545,7 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 | `RUBRICAI_LOG_FORMAT` | `text` | Log format (`text` for human-readable, `json` for structured) |
 | `RUBRICAI_LOG_DIR` | `~/.local/share/rubricai` | Directory for log file (`rubricai.log`) |
 | `NVD_API_KEY` | *(empty)* | Optional — increases NVD API rate limit from 5 to 50 req/30s |
+| `GITHUB_TOKEN` | *(empty)* | Optional — raises the GitHub Advisory rate limit from 60 to 5000 req/hr. No scopes needed for public advisories |
 | `RUBRICAI_API_KEY` | *(empty)* | Bearer token for the SSE/HTTP transport. Required: `sse` refuses to start without it unless `RUBRICAI_ALLOW_NO_AUTH=1` |
 | `RUBRICAI_ALLOW_NO_AUTH` | *(empty)* | Set to `1` to start `sse` without `RUBRICAI_API_KEY` (trusted local testing only) |
 | `RUBRICAI_TLS_CERT` | *(empty)* | Path to PEM certificate file for HTTPS (SSE transport) |
