@@ -1,14 +1,18 @@
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 
-def test_no_new_secrets():
-    baseline = Path(__file__).resolve().parent.parent / ".secrets.baseline"
-    assert baseline.exists(), (
+def test_no_new_secrets(tmp_path):
+    tracked = Path(__file__).resolve().parent.parent / ".secrets.baseline"
+    assert tracked.exists(), (
         ".secrets.baseline not found. "
         "Generate it with: detect-secrets scan > .secrets.baseline"
     )
+    # Scan against a copy: detect-secrets rewrites the baseline it is given.
+    baseline = tmp_path / ".secrets.baseline"
+    shutil.copy(tracked, baseline)
     result = subprocess.run(  # pylint: disable=subprocess-run-check
         [sys.executable, "-m", "detect_secrets", "scan", "--baseline", str(baseline)],
         capture_output=True,
