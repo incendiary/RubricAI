@@ -6,6 +6,8 @@ endpoint open so container orchestrators can probe liveness without a token;
 every other route requires ``Authorization: Bearer <api_key>``.
 """
 
+import hmac
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
@@ -26,7 +28,10 @@ class APIKeyAuthMiddleware:
             request = Request(scope)
             if request.url.path not in PUBLIC_PATHS:
                 auth_header = request.headers.get("authorization", "")
-                if auth_header != f"Bearer {self.api_key}":
+                expected = f"Bearer {self.api_key}"
+                if not hmac.compare_digest(
+                    auth_header.encode("utf-8"), expected.encode("utf-8")
+                ):
                     response = JSONResponse({"error": "Unauthorized"}, status_code=401)
                     await response(scope, receive, send)
                     return
