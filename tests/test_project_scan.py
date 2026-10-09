@@ -2,6 +2,7 @@
 
 import json
 import textwrap
+import time
 from pathlib import Path
 
 import pytest
@@ -158,6 +159,63 @@ class TestDockerProject:
         result = project_scan(str(tmp_project))
         names = [e["name"] for e in result["bom"]]
         assert "scratch" not in names
+
+
+class TestManifestHardening:
+    def test_pom_xml_parses(self, tmp_project: Path):
+        (tmp_project / "pom.xml").write_text(textwrap.dedent("""\
+                <?xml version="1.0" encoding="UTF-8"?>
+                <project xmlns="http://maven.apache.org/POM/4.0.0">
+                  <dependencies>
+                    <dependency>
+                      <groupId>org.slf4j</groupId>
+                      <artifactId>slf4j-api</artifactId>
+                      <version>2.0.9</version>
+                    </dependency>
+                  </dependencies>
+                </project>
+                """))
+        result = project_scan(str(tmp_project))
+        assert result["bom"] == [
+            {"name": "org.slf4j:slf4j-api", "version": "2.0.9", "type": "maven"}
+        ]
+
+    def test_billion_laughs_pom_rejected_quickly(self, tmp_project: Path):
+        entities = ['<!ENTITY lol0 "lol">']
+        for i in range(1, 6):
+            entities.append(f'<!ENTITY lol{i} "' + f"&lol{i - 1};" * 10 + '">')
+        laughs = (
+            '<?xml version="1.0"?>\n<!DOCTYPE lolz [\n'
+            + "\n".join(entities)
+            + "\n]>\n<project><dependencies><dependency>"
+            "<groupId>org.example</groupId><artifactId>&lol5;</artifactId>"
+            "<version>1.0.0</version></dependency></dependencies></project>"
+        )
+        (tmp_project / "pom.xml").write_text(laughs)
+        start = time.perf_counter()
+        result = project_scan(str(tmp_project))
+        assert time.perf_counter() - start < 2
+        assert [e for e in result["bom"] if e["type"] == "maven"] == []
+
+    def test_utf16_doctype_pom_rejected(self, tmp_project: Path):
+        doc = (
+            '<?xml version="1.0"?><!DOCTYPE project [<!ENTITY e "x">]>'
+            "<project><dependencies><dependency><groupId>g</groupId>"
+            "<artifactId>a</artifactId></dependency></dependencies></project>"
+        )
+        (tmp_project / "pom.xml").write_bytes(doc.encode("utf-16"))
+        result = project_scan(str(tmp_project))
+        assert [e for e in result["bom"] if e["type"] == "maven"] == []
+
+    def test_oversized_requirements_skipped(self, tmp_project: Path):
+        (tmp_project / "requirements.txt").write_text("flask==2.3.0\n")
+        (tmp_project / "requirements-dev.txt").write_text(
+            "pytest==8.0.0\n" + "# padding\n" * ((2 * 1024 * 1024) // 10)
+        )
+        result = project_scan(str(tmp_project))
+        names = [e["name"] for e in result["bom"]]
+        assert "flask" in names
+        assert "pytest" not in names
 
 
 class TestPathSafety:
