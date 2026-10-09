@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -30,7 +31,6 @@ _API_URL = "https://api.github.com/advisories"
 _NS = "gh_advisory"
 _TTL_HOURS = 24
 _SEARCH_TTL_HOURS = 4
-_HTTP_TIMEOUT = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
 
 _cache = FileCache()
 
@@ -189,15 +189,16 @@ def _normalize_advisory(advisory: dict) -> dict:
     # GitHub uses CVE IDs directly or generates GHSA IDs; prefer CVE if available
     cve_id = advisory.get("cve_id") or advisory.get("ghsa_id") or "UNKNOWN"
 
-    # GitHub severity (CRITICAL, HIGH, MODERATE, LOW) → extract CVSS if available
     severity_text = advisory.get("severity", "").upper()
-    cvss_base = None
-    cvss_version = None
 
-    # Some advisories include CVSS scores; fallback to severity guess
-    if "cvss_score" in advisory:
-        cvss_base = advisory.get("cvss_score")
-        cvss_version = advisory.get("cvss_version", "3.1")
+    # GitHub returns cvss: {score, vector_string}; score 0 with no vector = unscored
+    cvss = advisory.get("cvss") or {}
+    cvss_base = cvss.get("score") or None
+    cvss_vector = cvss.get("vector_string")
+    cvss_version = None
+    if cvss_vector:
+        match = re.match(r"CVSS:(\d\.\d)/", cvss_vector)
+        cvss_version = match.group(1) if match else "unknown"
 
     # Description from summary or details
     description = (advisory.get("summary") or advisory.get("description") or "")[:300]
@@ -207,13 +208,16 @@ def _normalize_advisory(advisory: dict) -> dict:
     last_modified = advisory.get("updated_at", "")
 
     # Package ecosystem (for context)
-    ecosystem = advisory.get("package", {}).get("ecosystem", "")
-    pkg_name = advisory.get("package", {}).get("name", "")
+    vulns = advisory.get("vulnerabilities") or [{}]
+    package = vulns[0].get("package") or {}
+    ecosystem = package.get("ecosystem", "")
+    pkg_name = package.get("name", "")
 
     return {
         "id": cve_id,
         "description": description,
         "cvss_base": cvss_base,
+        "cvss_vector": cvss_vector,
         "cvss_version": cvss_version,
         "published": published,
         "last_modified": last_modified,

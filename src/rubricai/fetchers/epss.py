@@ -1,7 +1,6 @@
 """FIRST EPSS score fetcher."""
 
 import logging
-import os
 
 import httpx
 
@@ -12,13 +11,6 @@ _API_URL = "https://api.first.org/data/v1/epss"
 _NS = "epss"
 _TTL_HOURS = 24
 _logger = logging.getLogger(__name__)
-
-
-def _timeout() -> int:
-    try:
-        return int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
-    except (ValueError, TypeError):
-        return 30
 
 
 _cache = FileCache()
