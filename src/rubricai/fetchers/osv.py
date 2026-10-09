@@ -16,7 +16,6 @@ Returned CVE IDs can be passed directly to intel_lookup for full NVD enrichment
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -29,7 +28,6 @@ _logger = logging.getLogger(__name__)
 _API_URL = "https://api.osv.dev/v1/query"
 _NS = "osv_search"
 _SEARCH_TTL_HOURS = 4
-_HTTP_TIMEOUT = int(os.getenv("RUBRICAI_HTTP_TIMEOUT", "30"))
 
 _cache = FileCache()
 

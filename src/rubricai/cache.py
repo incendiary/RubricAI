@@ -1,6 +1,8 @@
 """Simple file-backed JSON cache with per-entry TTL."""
 
 import json
+import os
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -11,7 +13,6 @@ _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "rubricai"
 class FileCache:
     def __init__(self, cache_dir: str | Path = _DEFAULT_CACHE_DIR):
         self._dir = Path(cache_dir)
-        self._dir.mkdir(parents=True, exist_ok=True)
 
     @staticmethod
     def _sanitize_namespace(namespace: str) -> str:
@@ -37,7 +38,17 @@ class FileCache:
             return {}
 
     def _save(self, namespace: str, data: dict) -> None:
-        self._path(namespace).write_text(json.dumps(data, default=str))
+        # Write-then-rename so a crash never leaves a truncated cache file.
+        self._dir.mkdir(parents=True, exist_ok=True)
+        path = self._path(namespace)
+        fd, tmp = tempfile.mkstemp(dir=self._dir, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                f.write(json.dumps(data, default=str))
+            os.replace(tmp, path)
+        except BaseException:
+            Path(tmp).unlink(missing_ok=True)
+            raise
 
     def get(self, namespace: str, key: str) -> Any | None:
         store = self._load(namespace)

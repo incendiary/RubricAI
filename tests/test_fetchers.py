@@ -824,3 +824,20 @@ async def test_pipeline_low_lane(tmp_path, monkeypatch):
 
     assert assessment["lane"] == "low"
     assert assessment["target"]["days"] is None  # patch train
+
+
+def test_gh_advisory_normalises_log4shell_payload():
+    import json
+    from pathlib import Path
+
+    from src.rubricai.fetchers.gh_advisory import _normalize_advisory
+
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "ghsa_log4shell.json").read_text()
+    )
+    rec = _normalize_advisory(payload[0])
+    assert rec["cvss_base"] == 10
+    assert rec["cvss_vector"].startswith("CVSS:3.1/AV:N")
+    assert rec["cvss_version"] == "3.1"
+    assert rec["ecosystem"] == "maven"
+    assert "log4j-core" in rec["package"]
