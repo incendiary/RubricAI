@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import re
-from datetime import UTC, datetime, timedelta
+import time
 
 import httpx
 
@@ -30,9 +30,11 @@ _logger = logging.getLogger(__name__)
 _API_URL = "https://api.github.com/advisories"
 _NS = "gh_advisory"
 _TTL_HOURS = 24
-_SEARCH_TTL_HOURS = 4
+_NEGATIVE_TTL_HOURS = 1
+_NO_ADVISORY = "none"  # cached marker for a confirmed "no advisory" answer
 
 _cache = FileCache()
+_blocked_until = 0.0  # epoch seconds; fetch is skipped until this time passes
 
 
 def _headers() -> dict:
@@ -55,25 +57,36 @@ async def fetch(cve_id: str) -> dict | None:
 
     Returns None if not found or on HTTP errors.
     """
-    cached = _cache.get(_NS, cve_id.upper())
+    global _blocked_until
+    key = cve_id.upper()
+    cached = _cache.get(_NS, key)
     if cached is not None:
-        return cached
+        return None if cached == _NO_ADVISORY else cached
+    if time.time() < _blocked_until:
+        return None
 
     try:
         resp = await fetch_with_timeout_escalation(
             "GET",
             _API_URL,
-            params={"cve_id": cve_id.upper()},
+            params={"cve_id": key},
             headers=_headers(),
         )
 
         if resp.status_code == 404:
+            _cache.set(_NS, key, _NO_ADVISORY, ttl_hours=_NEGATIVE_TTL_HOURS)
             return None
         if resp.status_code == 403:
-            _logger.warning(
-                "GitHub Advisory rate limit exceeded (403); "
-                "use GITHUB_TOKEN for higher rate limit"
-            )
+            reset = resp.headers.get("x-ratelimit-reset")
+            if resp.headers.get("x-ratelimit-remaining") == "0" and reset:
+                _blocked_until = float(reset)
+                _logger.warning(
+                    "GitHub Advisory rate limit exhausted; skipping until epoch %s "
+                    "(set GITHUB_TOKEN for a higher limit)",
+                    reset,
+                )
+            else:
+                _logger.warning("GitHub Advisory fetch forbidden (403) for %s", cve_id)
             return None
         if resp.status_code >= 400:
             _logger.warning(
@@ -81,15 +94,13 @@ async def fetch(cve_id: str) -> dict | None:
             )
             return None
 
-        data = resp.json()
-
-        # GitHub returns a list directly; we want the first (and usually only) match
-        advisories = data if isinstance(data, list) else data.get("advisories", [])
+        advisories = resp.json()
         if not advisories:
+            _cache.set(_NS, key, _NO_ADVISORY, ttl_hours=_NEGATIVE_TTL_HOURS)
             return None
 
         result = _normalize_advisory(advisories[0])
-        _cache.set(_NS, cve_id.upper(), result, ttl_hours=_TTL_HOURS)
+        _cache.set(_NS, key, result, ttl_hours=_TTL_HOURS)
         return result
 
     except httpx.HTTPError as exc:
@@ -97,99 +108,10 @@ async def fetch(cve_id: str) -> dict | None:
         return None
 
 
-async def search(
-    keyword: str,
-    ecosystem: str | None = None,
-    days_back: int = 7,
-    max_results: int = 200,
-) -> list[dict]:
-    """Search GitHub Advisory Database by package name and optional ecosystem.
-
-    GitHub Advisory uses package-manager-native names (Maven artifact IDs, PyPI
-    package names, npm module names, etc.) and can filter by ecosystem.
-
-    Args:
-        keyword: Package name (e.g. "log4j-core", "requests", "express")
-        ecosystem: Package ecosystem ("maven", "pip", "npm", "nuget", "rubygems", "go")
-            If None, searches across all ecosystems.
-        days_back: Lookback window in days (filters by modified_at).
-        max_results: Cap on total advisories returned.
-
-    Returns:
-        List of normalised dicts matching NVD shape, tagged with source: "github"
-    """
-    cache_key = (
-        f"{keyword.lower()}:{(ecosystem or '').lower()}:{days_back}:{max_results}"
-    )
-    cached = _cache.get(f"{_NS}_search", cache_key)
-    if cached is not None:
-        return cached
-
-    try:
-        params: dict = {"package_name": keyword}
-        if ecosystem:
-            params["ecosystem"] = ecosystem.lower()
-
-        resp = await fetch_with_timeout_escalation(
-            "GET",
-            _API_URL,
-            params=params,
-            headers=_headers(),
-        )
-
-        if resp.status_code == 403:
-            _logger.warning(
-                "GitHub Advisory rate limit exceeded (403); "
-                "use GITHUB_TOKEN for higher rate limit"
-            )
-            return []
-        if resp.status_code >= 400:
-            _logger.warning(
-                "GitHub Advisory search failed for %s/%s: HTTP %d",
-                ecosystem or "any",
-                keyword,
-                resp.status_code,
-            )
-            return []
-
-        data = resp.json()
-        advisories = data if isinstance(data, list) else data.get("advisories", [])
-
-        # Filter by days_back on modified_at
-        cutoff = (datetime.now(tz=UTC) - timedelta(days=days_back)).isoformat()
-
-        results: list[dict] = []
-        for advisory in advisories:
-            if len(results) >= max_results:
-                break
-
-            modified = advisory.get("updated_at", "")
-            if modified < cutoff:
-                continue
-
-            result = _normalize_advisory(advisory)
-            results.append(result)
-
-        _logger.info(
-            "GitHub Advisory search complete: package=%r ecosystem=%s results=%d",
-            keyword,
-            ecosystem or "any",
-            len(results),
-        )
-        _cache.set(f"{_NS}_search", cache_key, results, ttl_hours=_SEARCH_TTL_HOURS)
-        return results
-
-    except httpx.HTTPError as exc:
-        _logger.warning("GitHub Advisory search failed for %s: %s", keyword, exc)
-        return []
-
-
 def _normalize_advisory(advisory: dict) -> dict:
-    """Normalise a GitHub Advisory record to match NVD output shape."""
+    """Reduce a GitHub Advisory record to the keys intel_lookup reads."""
     # GitHub uses CVE IDs directly or generates GHSA IDs; prefer CVE if available
     cve_id = advisory.get("cve_id") or advisory.get("ghsa_id") or "UNKNOWN"
-
-    severity_text = advisory.get("severity", "").upper()
 
     # GitHub returns cvss: {score, vector_string}; score 0 with no vector = unscored
     cvss = advisory.get("cvss") or {}
@@ -200,18 +122,7 @@ def _normalize_advisory(advisory: dict) -> dict:
         match = re.match(r"CVSS:(\d\.\d)/", cvss_vector)
         cvss_version = match.group(1) if match else "unknown"
 
-    # Description from summary or details
     description = (advisory.get("summary") or advisory.get("description") or "")[:300]
-
-    # Timestamps
-    published = advisory.get("published_at", "")
-    last_modified = advisory.get("updated_at", "")
-
-    # Package ecosystem (for context)
-    vulns = advisory.get("vulnerabilities") or [{}]
-    package = vulns[0].get("package") or {}
-    ecosystem = package.get("ecosystem", "")
-    pkg_name = package.get("name", "")
 
     return {
         "id": cve_id,
@@ -219,11 +130,4 @@ def _normalize_advisory(advisory: dict) -> dict:
         "cvss_base": cvss_base,
         "cvss_vector": cvss_vector,
         "cvss_version": cvss_version,
-        "published": published,
-        "last_modified": last_modified,
-        "url": f"https://github.com/advisories/{advisory.get('ghsa_id', cve_id)}",
-        "source": "github",
-        "ecosystem": ecosystem,
-        "package": pkg_name,
-        "severity": severity_text,
     }

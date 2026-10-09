@@ -839,5 +839,66 @@ def test_gh_advisory_normalises_log4shell_payload():
     assert rec["cvss_base"] == 10
     assert rec["cvss_vector"].startswith("CVSS:3.1/AV:N")
     assert rec["cvss_version"] == "3.1"
-    assert rec["ecosystem"] == "maven"
-    assert "log4j-core" in rec["package"]
+    assert set(rec) == {"id", "description", "cvss_base", "cvss_vector", "cvss_version"}
+
+
+# ---------------------------------------------------------------------------
+# GitHub Advisory rate-limit guard and negative cache
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def gh(tmp_path, monkeypatch):
+    from src.rubricai.fetchers import gh_advisory
+
+    monkeypatch.setattr(gh_advisory, "_cache", FileCache(tmp_path))
+    monkeypatch.setattr(gh_advisory, "_blocked_until", 0.0)
+    return gh_advisory
+
+
+def _gh_call(gh, resp):
+    return patch.object(
+        gh, "fetch_with_timeout_escalation", AsyncMock(return_value=resp)
+    )
+
+
+@pytest.mark.asyncio
+async def test_gh_advisory_rate_limit_guard_skips_http_until_reset(gh):
+    resp = _mock_response({}, 403)
+    resp.headers = {"x-ratelimit-remaining": "0", "x-ratelimit-reset": "2000"}
+    with _gh_call(gh, resp) as call, patch.object(gh.time, "time", return_value=1000.0):
+        assert await gh.fetch("CVE-2024-0001") is None
+        assert await gh.fetch("CVE-2024-0002") is None
+    assert call.await_count == 1
+
+    ok = _mock_response([{"cve_id": "CVE-2024-0003"}])
+    with _gh_call(gh, ok) as call, patch.object(gh.time, "time", return_value=2001.0):
+        assert (await gh.fetch("CVE-2024-0003"))["id"] == "CVE-2024-0003"
+    assert call.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_gh_advisory_plain_403_does_not_set_guard(gh):
+    resp = _mock_response({}, 403)
+    resp.headers = {}
+    with _gh_call(gh, resp) as call:
+        await gh.fetch("CVE-2024-0001")
+        await gh.fetch("CVE-2024-0002")
+    assert call.await_count == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("resp", [_mock_response({}, 404), _mock_response([])])
+async def test_gh_advisory_negative_result_is_cached(gh, resp):
+    with _gh_call(gh, resp) as call:
+        assert await gh.fetch("CVE-2024-0001") is None
+        assert await gh.fetch("CVE-2024-0001") is None
+    assert call.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_gh_advisory_server_error_is_not_cached(gh):
+    with _gh_call(gh, _mock_response({}, 500)) as call:
+        await gh.fetch("CVE-2024-0001")
+        await gh.fetch("CVE-2024-0001")
+    assert call.await_count == 2

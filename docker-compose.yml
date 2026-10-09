@@ -8,6 +8,7 @@ services:
       - RUBRICAI_REPORT_DIR=/reports
       - RUBRICAI_ENV_DIR=/state
       - NVD_API_KEY=${NVD_API_KEY:-}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
       # Required: the SSE transport refuses to start without a key.
       - RUBRICAI_API_KEY=${RUBRICAI_API_KEY:-}
       # Unauthenticated start, only for trusted local testing:
