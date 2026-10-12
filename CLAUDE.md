@@ -1,147 +1,86 @@
-# Project Publication Readiness — Python
+# RubricAI agent guide
 
-## Context
-- **Type:** Vulnerability prioritisation MCP server + AI interview workflow
-- **Authorization:** No offensive capability — fetches public intel only (CISA KEV, EPSS, NVD)
-- **Public release intent:** Portfolio / professional reference for security engineering workflows
-- **Audience:** Security engineers, AppSec teams, vulnerability management practitioners
+## What this is
 
-Fill in the four fields above before starting the audit.
+RubricAI is a Python MCP server that prioritises CVEs for remediation. It fetches public intelligence (CISA KEV, EPSS, NVD, GitHub Advisory, OSV, public PoC signals) and applies deterministic scoring policies (CHML, EPSS v5, BOD 26-04) in pure Python. The AI client conducts the interview and calls the tools; the server does the scoring. It has no offensive capability. It runs over stdio for local clients, or over SSE for Docker and remote use, where `RUBRICAI_API_KEY` is required.
 
----
+## Layout
 
-## Ordered Steps — Work top to bottom. One PR per logical unit. Stop before any destructive action.
+- `src/main.py`: entry point (`main()`), transport selection via `RUBRICAI_TRANSPORT`, startup security checks. Installed as the `rubricai` script.
+- `src/rubricai/server.py`: FastMCP instance and the MCP tool definitions.
+- `src/rubricai/auth.py`: API-key middleware for SSE; `/health` is public.
+- `src/rubricai/fetchers/`: intel sources (KEV, EPSS, NVD, GitHub Advisory, OSV, PoC) and retry or timeout escalation.
+- `src/rubricai/policy/`: policy definitions and the policy registry.
+- `src/rubricai/schemas/`: Pydantic models for findings, assessments, environments, evidence and intel.
+- `src/rubricai/scoring/`: priority scoring.
+- `src/rubricai/tools/`: tool implementations behind the MCP tools.
+- `src/rubricai/templates/`: Jinja2 report templates (Markdown and HTML card).
+- `prompts/`: workflow prompt and per-client system prompt templates (`prompts/templates/*.j2`).
+- `scripts/`: `install_claude_config.py` (Claude Desktop config) and `render_prompt.py`.
+- `tests/`: pytest suite. `tests/conftest.py` isolates the home and state directories.
+- `docs/examples.md`, `examples/`: worked scenarios and sample PDF reports.
+- `ROADMAP.md`: delivered work, open items, review findings and decisions.
 
-### Priority Zero — Secret Scanning
-Audit every file and the full git history for hardcoded credentials, API keys,
-tokens, internal IPs, hostnames, email addresses, and proprietary config.
-
-```bash
-# Working tree
-grep -rniE "(key|secret|token|password|auth|bearer|sk-|akia|api_key)" . \
-  --include="*.py" --include="*.toml" --include="*.cfg" --include="*.env" \
-  --include="*.yaml" --include="*.yml" --include="*.json"
-
-# Git history
-git log -p | grep -iE "(key|secret|token|password|bearer|sk-|akia)" | head -100
-```
-
-If secrets found in history: recommend destroying `.git` and reinitialising.
-**Do not proceed until working tree and history are confirmed clean.**
-
----
-
-### Step 1 — Dependency Audit
-- Check `requirements*.txt` / `pyproject.toml` for severely outdated or CVE-affected packages.
-- Flag anything high-severity. Check Dependabot alerts if repo is already on GitHub.
-
----
-
-### Step 2 — Code Quality Review (Karpathy pass)
-Review every `.py` file:
-- **Dead code** — unreachable branches, unused imports, unused variables
-- **Duplication** — repeated logic that should be extracted
-- **Confusing control flow** — catch-and-re-raise, dead else branches, unreachable returns
-- **Comment noise** — comments that describe *what*, not *why*
-
-Present findings grouped as (A) dead code, (B) duplication, (C) control flow, (D) comment noise.
-**Ask for confirmation before implementing each group. Make distinct commits per group.**
-
-Principles:
-- Surgical changes only — every changed line traces to a finding
-- No speculative abstractions, no wrapper functions that add no logic
-- Match existing style unless step 3 tooling enforces otherwise
-
----
-
-### Step 3 — Tooling
-Set up if not already present:
+## Setup and commands
 
 ```bash
-# Install tooling
-python -m pip install --upgrade pip
-pip install black ruff isort pre-commit detect-secrets
-
-# Initialise pre-commit
-pre-commit install
-pre-commit run --all-files
-
-# Generate secrets baseline (commit this file — it tracks known findings)
-detect-secrets scan > .secrets.baseline
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-lock.txt   # runtime and dev tools, pinned as in CI
+pip install -e . --no-deps
 ```
 
-Required config files (templates already in this repo):
-- `pyproject.toml` — Black, Ruff, isort config
-- `.pre-commit-config.yaml` — gitleaks, trufflehog, black, ruff, isort, detect-secrets hooks
-- `.github/workflows/ci.yml` — lint + test + secret-scan on push/PR
-- `.gitleaks.toml` — gitleaks config with `.secrets.baseline` allowlist
-- `.secrets.baseline` — detect-secrets known-findings baseline (committed, not ignored)
+- `pytest`: runs the suite; coverage gate is set in `pyproject.toml`.
+- `black --check . && ruff check . && isort --check-only .`: the CI Lint job. Fix locally with `black .` and `isort .`.
+- `pre-commit run --all-files`: the local hook set.
+- `detect-secrets scan --baseline .secrets.baseline`: the CI secret baseline check.
+- `docker compose up --build`: SSE deployment; set `RUBRICAI_API_KEY` first.
 
-Add a GitHub issue and roadmap entry for any missing tests.
+Lint settings live in `pyproject.toml` (line length 88, Python 3.11 target).
 
----
+## Workflow
 
-### Step 4 — Documentation
-- Update `README.md`: project description, setup instructions, roadmap table
-- Add roadmap `## Roadmap` section with columns: Issue #, Status, Description
-- Create a GitHub issue for each step above that required work
-- Add this footer to README:
+- All changes go through a pull request to `main`. Never push to `main`. The pre-commit `no-commit-to-branch` hook blocks commits there as well.
+- One logical change per PR. Use a topic branch.
+- PR titles and commit subjects use conventional prefixes (`fix:`, `feat:`, `docs:`, `ci:`, `chore:`). Include the RA or OPEN item where one applies.
+- Merge by squash.
+- Never rebase a pushed branch. Bring it up to date with `git merge main`.
+- Branch protection on `main` (read live with `gh api repos/incendiary/RubricAI/branches/main/protection`):
+  - Required checks: `Lint`, `Test`, `Secret Scan`, with branches required to be up to date before merging.
+  - Required approving reviews: 0. Stale reviews are dismissed on new pushes.
+  - Admins are enforced. Force pushes and branch deletion are blocked.
+  - `Audit` and `Test (Python 3.13)` report but are not required.
+- Check names must match the workflow `name:` values exactly. A required context that never reports blocks every PR.
 
-```markdown
-> This project was uplifted for public release with the assistance of Claude (Anthropic).
-> Things should work, but some paths may not have been fully re-tested. PRs and fixes welcome.
-```
+## Versioning
 
----
+- Three values must agree: `VERSION`, `[project] version` in `pyproject.toml`, and the `git clone --branch vX.Y.Z` line in `README.md`. `tests/test_version.py` enforces this, and also that `pyproject.toml` is not behind the latest tag.
+- Bump once per batch of related PRs, not per PR. Patch for fixes, minor for features, major for breaking changes.
+- To release: merge the version bump, tag `vX.Y.Z` on `main`, and create a GitHub release for the tag.
 
-### Step 5 — Branch Protection
-```bash
-# Make repo public
-gh repo edit --visibility public
+## Testing
 
-# Enable branch protection on main
-gh api repos/incendiary/RubricAI/branches/main/protection \
-  --method PUT \
-  --field required_status_checks='{"strict":true,"contexts":["ci"]}' \
-  --field enforce_admins=true \
-  --field required_pull_request_reviews='{"required_approving_review_count":1}' \
-  --field restrictions=null
-```
+- Every bug fix adds a regression test that fails without the fix.
+- Run `pytest` before pushing. CI runs it on Python 3.11 (required) and 3.13 (informational).
+- Never lower `--cov-fail-under` in `pyproject.toml`. Raise it when coverage grows.
+- Tests must not touch the real home directory or real state. `tests/conftest.py` points `HOME`, `RUBRICAI_ENV_DIR`, `RUBRICAI_REPORT_DIR` and `RUBRICAI_LOG_DIR` at a temporary directory. Do not bypass it.
+- Async tests run in pytest-asyncio auto mode.
 
----
+## Security
 
-### Versioning
-Tag a release at each milestone:
-```bash
-gh release create v0.1.0 --title "Secret scan + dependency audit clean" --notes "Priority Zero and Step 1 complete"
-gh release create v0.2.0 --title "Code quality pass" --notes "Step 2 complete"
-gh release create v0.3.0 --title "Tooling configured" --notes "Step 3 complete"
-gh release create v0.9.0 --title "Security hardening complete" --notes "All 17 findings remediated (PRs #73-#81)"
-gh release create v1.0.0 --title "Public release" --notes "All steps complete, branch protection enabled"
-```
+- No secrets, API keys, tokens, internal hostnames, IP addresses or personal data in code, tests, fixtures, docs or commits. Read credentials from environment variables (see `.env.example`). `.env` is gitignored.
+- Pre-commit runs gitleaks, trufflehog, detect-secrets and the branch guard. CI's Secret Scan job runs gitleaks and trufflehog.
+- Intentional test fixtures that look like secrets get a `# pragma: allowlist secret` comment. Regenerate `.secrets.baseline` deliberately, in its own commit, when that is needed. Never commit it as a side effect of running tests or detect-secrets.
+- SSE refuses to start without `RUBRICAI_API_KEY` unless `RUBRICAI_ALLOW_NO_AUTH=1` is set. `RUBRICAI_TLS_CERT` and `RUBRICAI_TLS_KEY` must be set together. Keep both behaviours.
+- Add new dependencies to `requirements-lock.txt` with exact pins. CI's Audit job runs `pip-audit` against that file.
+- Third-party GitHub Actions stay pinned to full commit SHAs, with the tag in a trailing comment.
 
----
+## Documentation
 
-## Security Remediation Way of Working
+- Keep `README.md` accurate when behaviour, environment variables, tools or the clone tag change.
+- Record completed work in `ROADMAP.md`.
 
-When performing security fixes:
-1. **Spec first** — use karpathy-spec to break into agile specs with testable "done when"
-2. **One PR per logical group** — related findings can share a PR, but each PR is independently reviewable
-3. **Point releases per PR** — each merged fix bumps Major.Minor.Point (e.g. 0.8.6, 0.8.7...)
-4. **Minor release on completion** — all security work done = minor bump (e.g. 0.9.0)
-5. **Test before commit** — run affected tests, verify no regressions
-6. **README roadmap tracking** — every PR gets a row in the Roadmap table with status
-7. **Verify after** — invoke karpathy-verify: run full suite, check coverage, confirm no new findings
-8. **PR format** — title: `fix: <description> (vX.Y.Z)`, body: Summary + Findings table + Test plan
+## Where to look
 
----
-
-## Engineering Philosophy
-- Think before coding — state assumptions, ask before implementing
-- Simplicity first — minimum code that solves the problem
-- Surgical changes — touch only what you must
-- Use `.venv` — never install packages system-wide
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-```
+- `ROADMAP.md`: open items (`OPEN-n`), review findings (`RA-n`) and decisions (`D-n`). Pick the highest-priority item whose "Depends on" is met. Do not start an item whose dependencies are unmet.
+- `CONTRIBUTING.md`: contributor setup and the secrets baseline procedure.
