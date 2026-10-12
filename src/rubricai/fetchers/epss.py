@@ -27,7 +27,15 @@ async def fetch(cve_id: str) -> dict | None:
             "GET", _API_URL, params={"cve": cve_id}
         )
         resp.raise_for_status()
-        data = resp.json()
+        items = resp.json().get("data", [])
+        result = None
+        if items:
+            item = items[0]
+            result = {
+                "score": float(item.get("epss", 0)),
+                "percentile": float(item.get("percentile", 0)),
+                "date": item.get("date"),
+            }
     except httpx.HTTPStatusError as exc:
         _logger.warning(
             "EPSS fetch failed for %s: HTTP %d", cve_id, exc.response.status_code
@@ -36,16 +44,11 @@ async def fetch(cve_id: str) -> dict | None:
     except httpx.HTTPError as exc:
         _logger.warning("EPSS fetch error for %s: %s", cve_id, type(exc).__name__)
         return None
-
-    items = data.get("data", [])
-    if not items:
+    except (ValueError, TypeError, AttributeError):
+        _logger.warning("EPSS returned a malformed body for %s", cve_id)
         return None
 
-    item = items[0]
-    result = {
-        "score": float(item.get("epss", 0)),
-        "percentile": float(item.get("percentile", 0)),
-        "date": item.get("date"),
-    }
+    if not result:
+        return None
     _cache.set(_NS, cve_id.upper(), result, ttl_hours=_TTL_HOURS)
     return result

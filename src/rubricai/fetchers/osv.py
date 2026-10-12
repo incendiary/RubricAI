@@ -138,8 +138,12 @@ async def search(
             )
             return []
         data = resp.json()
+        vulns = data.get("vulns", [])
     except httpx.HTTPError as exc:
         _logger.warning("OSV search request failed for name=%r: %s", name, exc)
+        return []
+    except (ValueError, AttributeError):
+        _logger.warning("OSV search returned a malformed body for name=%r", name)
         return []
 
     cutoff: datetime | None = None
@@ -147,7 +151,7 @@ async def search(
         cutoff = datetime.now(tz=UTC) - timedelta(days=days_back)
 
     results: list[dict] = []
-    for vuln in data.get("vulns", []):
+    for vuln in vulns:
         # Only include entries that carry a CVE alias so we can enrich from NVD.
         aliases = vuln.get("aliases", [])
         cve_id = next((a for a in aliases if a.upper().startswith("CVE-")), None)
