@@ -490,6 +490,7 @@ Evidence type values: `firewall_policy`, `network_config`, `acl_rule`, `waf_conf
 |------|-------------|
 | `intel_lookup` | Fetch KEV, EPSS, CVSS, PoC, and vendor signals for one or more CVEs |
 | `score_evaluate` | Apply CHML policy and return lane, target, rationale, evidence gaps |
+| `score_compare` | Score one finding under every registered policy (CHML, EPSS v5, BOD 26-04) and return a side-by-side comparison |
 | `report_generate` | Produce markdown + JSON + optional PDF report card, persist to disk |
 | `env_list` | List all named environments stored on disk (call at session start) |
 | `env_read` | Read the current versioned state for a named environment |
@@ -497,6 +498,7 @@ Evidence type values: `firewall_policy`, `network_config`, `acl_rule`, `waf_conf
 | `policy_get` | Return the current CHML policy definition for auditability |
 | `bom_update` | Store or replace the Bill of Materials for a named environment |
 | `bom_check` | Check all BOM components for CVEs published or modified recently |
+| `project_scan` | Scan a project directory's manifests and return a BOM and environment summary ready for `bom_update` |
 
 ---
 
