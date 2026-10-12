@@ -43,12 +43,15 @@ async def _download_and_index() -> dict | None:
     try:
         resp = await fetch_with_timeout_escalation("GET", _CATALOG_URL)
         resp.raise_for_status()
-        data = resp.json()
+        index = {v["cveID"].upper(): v for v in resp.json().get("vulnerabilities", [])}
     except httpx.HTTPStatusError as exc:
         _logger.warning("KEV download failed: HTTP %d", exc.response.status_code)
         return None
     except httpx.HTTPError as exc:
         _logger.warning("KEV download error: %s", type(exc).__name__)
         return None
+    except (ValueError, KeyError, TypeError, AttributeError):
+        _logger.warning("KEV download returned a malformed catalog")
+        return None
 
-    return {v["cveID"].upper(): v for v in data.get("vulnerabilities", [])}
+    return index

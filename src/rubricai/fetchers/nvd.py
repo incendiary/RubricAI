@@ -207,22 +207,27 @@ async def fetch(cve_id: str) -> dict | None:
     if cached is not None:
         return cached
 
-    resp = await _fetch_with_auth_fallback(
-        "GET",
-        _API_URL,
-        params={"cveId": cve_id},
-        headers=_headers(),
-    )
-    if resp.status_code == 404:
+    try:
+        resp = await _fetch_with_auth_fallback(
+            "GET",
+            _API_URL,
+            params={"cveId": cve_id},
+            headers=_headers(),
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        vulns = resp.json().get("vulnerabilities", [])
+        result = vulns[0].get("cve", {}) if vulns else None
+    except httpx.HTTPError as exc:
+        _logger.warning("NVD fetch failed for %s: %s", cve_id, type(exc).__name__)
         return None
-    resp.raise_for_status()
-    data = resp.json()
-
-    vulns = data.get("vulnerabilities", [])
-    if not vulns:
+    except (ValueError, TypeError, AttributeError, IndexError):
+        _logger.warning("NVD returned a malformed body for %s", cve_id)
         return None
 
-    result = vulns[0].get("cve", {})
+    if not isinstance(result, dict) or not result:
+        return None
     _cache.set(_NS, cve_id.upper(), result, ttl_hours=_TTL_HOURS)
     return result
 
@@ -281,7 +286,15 @@ async def search(
     for kw in keywords:
         if len(results) >= max_results:
             break
-        for cve in await _search_single(kw, start_date, end_date, max_results):
+        try:
+            found = await _search_single(kw, start_date, end_date, max_results)
+        except httpx.HTTPError as exc:
+            _logger.warning("NVD search failed for %r: %s", kw, type(exc).__name__)
+            return []
+        except (ValueError, TypeError, AttributeError):
+            _logger.warning("NVD search returned a malformed body for %r", kw)
+            return []
+        for cve in found:
             if cve["id"] and cve["id"] not in seen_ids:
                 seen_ids.add(cve["id"])
                 results.append(cve)

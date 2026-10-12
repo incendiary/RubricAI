@@ -94,7 +94,16 @@ async def fetch(cve_id: str) -> dict | None:
             )
             return None
 
-        advisories = resp.json()
+        try:
+            advisories = resp.json()
+        except ValueError:
+            _logger.warning("GitHub Advisory returned invalid JSON for %s", cve_id)
+            return None
+        if not isinstance(advisories, list) or not all(
+            isinstance(a, dict) for a in advisories
+        ):
+            _logger.warning("GitHub Advisory returned unexpected body for %s", cve_id)
+            return None
         if not advisories:
             _cache.set(_NS, key, _NO_ADVISORY, ttl_hours=_NEGATIVE_TTL_HOURS)
             return None

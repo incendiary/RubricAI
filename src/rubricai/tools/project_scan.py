@@ -85,9 +85,14 @@ def _parse_package_json(root: Path) -> list[dict[str, Any]]:
         data = json.loads(pkg.read_text(encoding="utf-8"))
     except Exception:
         return []
+    if not isinstance(data, dict):
+        return []
     entries = []
     for section in ("dependencies", "devDependencies"):
-        for name, version in data.get(section, {}).items():
+        deps = data.get(section)
+        if not isinstance(deps, dict):
+            continue
+        for name, version in deps.items():
             # version strings like "^1.2.3", "~2.0.0", ">=3.0.0 <4.0.0"
             clean_ver = re.sub(r"^[^0-9]*", "", str(version)) or str(version)
             entries.append({"name": name, "version": clean_ver, "type": "npm"})
@@ -131,7 +136,7 @@ def _parse_go_mod(root: Path) -> list[dict[str, Any]]:
         return []
     entries = []
     in_require = False
-    for line in gomod.read_text(encoding="utf-8").splitlines():
+    for line in gomod.read_text(encoding="utf-8", errors="replace").splitlines():
         line = line.strip()
         if line.startswith("require ("):
             in_require = True
@@ -154,7 +159,7 @@ def _parse_gemfile_lock(root: Path) -> list[dict[str, Any]]:
         return []
     entries = []
     in_specs = False
-    for line in gemfile.read_text(encoding="utf-8").splitlines():
+    for line in gemfile.read_text(encoding="utf-8", errors="replace").splitlines():
         stripped = line.strip()
         if stripped == "specs:":
             in_specs = True
