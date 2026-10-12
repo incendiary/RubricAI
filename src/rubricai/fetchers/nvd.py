@@ -283,6 +283,7 @@ async def search(
     seen_ids: set[str] = set()
     results: list[dict] = []
 
+    failed = False
     for kw in keywords:
         if len(results) >= max_results:
             break
@@ -290,10 +291,12 @@ async def search(
             found = await _search_single(kw, start_date, end_date, max_results)
         except httpx.HTTPError as exc:
             _logger.warning("NVD search failed for %r: %s", kw, type(exc).__name__)
-            return []
+            failed = True
+            break
         except (ValueError, TypeError, AttributeError):
             _logger.warning("NVD search returned a malformed body for %r", kw)
-            return []
+            failed = True
+            break
         for cve in found:
             if cve["id"] and cve["id"] not in seen_ids:
                 seen_ids.add(cve["id"])
@@ -308,7 +311,8 @@ async def search(
         len(results),
         days_back,
     )
-    _cache.set(f"{_NS}_search", cache_key, results, ttl_hours=_SEARCH_TTL_HOURS)
+    if not failed:  # do not cache a partial result for the full TTL
+        _cache.set(f"{_NS}_search", cache_key, results, ttl_hours=_SEARCH_TTL_HOURS)
     return results
 
 

@@ -241,6 +241,26 @@ async def test_nvd_503_on_both_attempts_returns_none(upstream, monkeypatch):
     assert "apiKey" not in upstream.requests[-1].headers
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", [_timeout, _INVALID_JSON], ids=["timeout", "json"])
+async def test_nvd_search_keeps_results_found_before_a_failure(upstream, bad):
+    def handler(request):
+        if request.url.params["keywordSearch"] == "log4j-core":
+            return httpx.Response(
+                200,
+                json={
+                    "totalResults": 1,
+                    "vulnerabilities": [{"cve": {"id": CVE, "descriptions": []}}],
+                },
+            )
+        return bad(request)
+
+    upstream.handler = handler
+    results = await nvd.search("log4j-core")
+    assert [r["id"] for r in results] == [CVE]
+    assert nvd._cache.get("nvd_search", "log4j-core::7:200") is None
+
+
 # ---------------------------------------------------------------------------
 # intel_lookup: one failing source must not sink healthy results
 # ---------------------------------------------------------------------------
