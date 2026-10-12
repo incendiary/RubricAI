@@ -81,6 +81,8 @@ All open and planned items are gathered here for implementation. Each task is wr
 | OPEN-14 | Medium | ⬜ Open | **Report generation: offer to include evidence screenshots on supplementary PDF pages.** **Where:** `report_generate` MCP tool and PDF rendering pipeline (`src/rubricai/tools/report.py` + `src/rubricai/pdf/`). **Why:** Evidence items with file_path pointing to screenshot images are stored but not currently embedded in generated PDFs. Users must manually attach screenshots to reports or re-collect evidence. With screenshot embedding, PDF reports are self-contained and shareable without losing context (e.g., firewall rules, security group configs, WAF logs). **Do:** (a) before `report_generate` returns, inspect the evidence array for items with `file_path` pointing to images (PNG, JPG); (b) if images exist, ask the user: "I found X relevant evidence screenshots. Include them on supplementary pages in the PDF?" with a yes/no/review-list option; (c) if yes, embed images on separate pages at the end of the PDF with captions (evidence type + description); (d) if no or user opts to review, proceed without embedding; (e) PDF rendering should handle multi-page images gracefully (scale large images, add page breaks). **Verify:** (1) call `report_generate` with evidence items that have image file_paths; (2) verify Claude prompts user for inclusion before rendering; (3) generated PDF has supplementary pages with embedded screenshots; (4) PDF is still readable and properly formatted. |
 | OPEN-15 | Medium | ✅ Done (shipped v1.7.0, mapping fixed in v1.7.1: RA-1, RA-7) | **GitHub Advisory Database as alternative intel source for resilience.** **Where:** new `src/rubricai/fetchers/gh_advisory.py` module, `intel_lookup` tool in `src/rubricai/tools/intel.py`, and intel schema `src/rubricai/schemas/intel.py`. **Why:** NVD API experiences intermittent outages (503 Service Unavailable); currently, when NVD is down, vulnerability assessment fails completely. GitHub Advisory Database is free, well-maintained, and covers software packages (npm, PyPI, RubyGems, Maven, Nuget, Go) that NVD sometimes misses. Adding it as a secondary source improves coverage and resilience — when NVD is flaky, GH Advisory provides fallback intel. **Do:** (a) create `src/rubricai/fetchers/gh_advisory.py` with `fetch(cve_id: str) -> dict | None` and `search(keyword: str, ecosystem: str) -> list[dict]` functions (use GitHub GraphQL API or REST API v4); (b) fetch: `{cve_id, description, severity, cvss_score, published, urls, ecosystems}`; (c) add GH Advisory data to `intel_lookup`: after NVD fetch, check GitHub Advisory if NVD returned no data or NVD is unreachable (503/timeout), merge both sources with provenance tags (`source: "nvd"` vs `source: "github"`) so users know which intel is stale; (d) document rate limits (60 req/hr unauthenticated, 5000 req/hr with GitHub token) and add optional `GITHUB_TOKEN` env var for higher limits; (e) add caching (same as NVD: 24-hour TTL by CVE, 4-hour TTL for searches). **Verify:** (1) call `intel_lookup` for a package-focused CVE (e.g., log4j) and confirm GH Advisory fills gaps when NVD doesn't; (2) mock NVD 503 outage, verify `intel_lookup` falls back to GH Advisory and returns data with `source: "github"` tag; (3) verify rate-limit warnings appear in logs when approaching API limits; (4) unit tests for GH Advisory parser, caching, and fallback logic with mocked responses. |
 | [#12](https://github.com/incendiary/RubricAI/issues/12) | — | ✅ Done (enabled; see D-1 for open defects) | **Branch protection on `main`.** Requires a public repo or GitHub Pro/Team (not available on a private repo on the free plan). Unblock by making the repo public (per the release checklist) or upgrading the plan, then enable required status checks (`ci`) and required PR review. Tracked as GitHub issue [#12](https://github.com/incendiary/RubricAI/issues/12). |
+| n/a | Low | ⬜ Open | **Claude Desktop config preflight only on `--write`, so dry-run previews do not exit 1.** Variant kept in a local stash; reimplement if wanted. |
+| OPEN-16 | Medium | ⬜ Open | **Docker image is probably unreachable on the published port (do last).** **Where:** `Dockerfile`, `docker-compose.yml`. **Why:** FastMCP binds 127.0.0.1 by default (verified: `fastmcp.settings.host` is 127.0.0.1 in 3.4.x), and neither the Dockerfile nor `docker-compose.yml` sets `FASTMCP_HOST`, so the published port 8000 likely does not reach the server. The Dockerfile also has no `HEALTHCHECK` (remainder of OPEN-1), and `pip install -e .` runs before `src/` is copied. **Do:** set `FASTMCP_HOST=0.0.0.0` (and the port) in the image or compose file; add a `HEALTHCHECK` against `/health`; verify `docker compose up` end to end with `RUBRICAI_API_KEY` set (`curl /health` returns 200 without a key, other routes return 401 without the key). Needs a Docker-capable machine. |
 
 ## Review findings, 2026-10-08 (RA-*)
 
@@ -110,7 +112,7 @@ need the owner are `D-n`. Do not start an item whose **Depends on** is unmet.
 | D-4 | `.serena/project.yml` is tracked but Serena rewrites it on every version change, so the tree is permanently dirty. | **Decided, option A.** Untrack and ignore `.serena/`; PR in flight. |
 | D-5 | `env_migrate_legacy` tool and `needs_migration` flag exist for a pre-v0.8 layout. | **Decided, delete.** Removal PR in flight (tool, `needs_migration`, prompt and README references, tests). |
 | D-6 | Housekeeping of 7 stashes and about 17 stale local branches (several already merged or marked `gone` on origin). | **Decided, thorough.** Per-branch and per-stash list reviewed with the owner before anything is deleted. |
-| D-7 | CI tests Python 3.11 only; local venv is 3.14.8 and passes. | **Open.** Recommendation was option A (3.11 and 3.13); folded into RA-8 pending an answer. |
+| D-7 | CI tests Python 3.11 only; local venv is 3.14.8 and passes. | **Decided: Python 3.11 plus a separate non-required 3.13 job (PR #163).** |
 
 ### Work packages
 
@@ -123,6 +125,8 @@ Run `source .venv/bin/activate && pytest` before pushing. Do not run `detect-sec
 pytest and then commit `.secrets.baseline` (see RA-6).
 
 #### RA-1: Fix GitHub Advisory field mapping and merge per field
+
+**Status: Done in v1.7.1 (PR #157).**
 
 | | |
 |-|-|
@@ -156,6 +160,8 @@ Tests: (a) normaliser returns `cvss_base == 10`, a vector starting `CVSS:3.1/AV:
 
 #### RA-2: Bound worst-case request latency and remove dead timeout code
 
+**Status: Done in v1.7.1 (PR #154).**
+
 | | |
 |-|-|
 | Priority | High |
@@ -184,6 +190,8 @@ a 404 returns immediately. `grep -rn "_timeout()\|_HTTP_TIMEOUT" src` returns no
 
 #### RA-3: Make state writes safe (BOM lost update, unlocked versioning)
 
+**Status: Done in v1.7.1 (PR #158).**
+
 | | |
 |-|-|
 | Priority | Medium-High |
@@ -206,6 +214,8 @@ overwritten, and two writers can both claim the same `state_vNNN.json`.
 
 #### RA-4: `env_read` must not create environments
 
+**Status: Done in v1.7.1 (PR #161).**
+
 | | |
 |-|-|
 | Priority | Medium |
@@ -221,6 +231,8 @@ creates a permanent empty environment that then appears in `env_list`.
 **Verify.** Test: `env_read("typo-env")` then `env_list()["environments"]` does not contain `typo-env`.
 
 #### RA-5: SSE transport hardening
+
+**Status: Done in v1.7.1 (PR #156).**
 
 | | |
 |-|-|
@@ -242,6 +254,8 @@ creates a permanent empty environment that then appears in `env_list`.
 **Verify.** Tests for: wrong key of equal length returns 401; one-of-cert/key exits non-zero; sse without key exits non-zero; sse with key returns kwargs containing the middleware.
 
 #### RA-6: Cache robustness and test isolation
+
+**Status: Done in v1.7.1 (PR #155).**
 
 | | |
 |-|-|
@@ -267,6 +281,8 @@ creates a permanent empty environment that then appears in `env_list`.
 
 #### RA-7: GitHub Advisory hygiene: rate limit, token docs, unused code
 
+**Status: Done in v1.7.1 (PR #160).**
+
 | | |
 |-|-|
 | Priority | Medium |
@@ -284,6 +300,8 @@ creates a permanent empty environment that then appears in `env_list`.
 **Verify.** Test: after one mocked 403 with remaining 0, a second `fetch` makes no HTTP call. `grep -rn "gh_advisory.search" src tests` returns nothing.
 
 #### RA-8: CI hardening and Dependabot grouping
+
+**Status: Done in v1.7.1 (PR #163).**
 
 | | |
 |-|-|
@@ -305,6 +323,8 @@ creates a permanent empty environment that then appears in `env_list`.
 **Verify.** Open the PR and confirm all jobs run and report as `Lint`, `Test`, `Secret Scan`, `Audit`. `git diff` shows no `uses:` without a 40-character SHA.
 
 #### RA-9: Dependency remediation and Dependabot backlog
+
+**Status: Done in v1.7.1 (PR #162).**
 
 | | |
 |-|-|
@@ -331,6 +351,8 @@ creates a permanent empty environment that then appears in `env_list`.
 Coverage today: `main.py` 0%, `gh_advisory.py` 52%, `retry.py` 73% (the escalation loop, lines 151 to 175, is untested), `epss.py` and `kev.py` 72% (error branches), `project_scan.py` 69%, `server.py` 81%. Add tests for: each fetcher returns its documented empty value on timeout, 429, 5xx and malformed JSON; NVD 503 auth fallback sends the second request without `apiKey`; `project_scan` on a malformed `pom.xml`, `package.json` and `go.mod`. Assert specific values, not just status codes. **Verify:** total coverage at least 90%, and no module under 80% except `server.py`.
 
 #### RA-11: `project_scan` input hardening
+
+**Status: Done in v1.7.1 (PR #159).**
 
 | | |
 |-|-|
