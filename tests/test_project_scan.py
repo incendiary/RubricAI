@@ -278,3 +278,42 @@ class TestRenderPromptTarget:
         content = out.read_text()
         assert "project_scan" in content
         assert "PyCharm" in content
+
+
+class TestMalformedManifests:
+    """A broken manifest yields no entries rather than failing the whole scan."""
+
+    @pytest.mark.parametrize(
+        ("filename", "content"),
+        [
+            ("pom.xml", b"<project><dependencies><dependency>"),
+            ("pom.xml", b"\xff\xfe\x00 not xml"),
+            ("pom.xml", b""),
+            ("package.json", b"{not json"),
+            ("package.json", b"[]"),
+            ("package.json", b'"just a string"'),
+            ("package.json", b'{"dependencies": ["left-pad"]}'),
+            ("package.json", b'{"dependencies": null, "devDependencies": 3}'),
+            ("package.json", b"\xff\xfe"),
+            ("go.mod", b"\xff\xfe\x80"),
+            ("go.mod", b"require (\n\tgithub.com/x/y"),
+            ("go.mod", b"require\n"),
+            ("Gemfile.lock", b"\xff\xfe\x80"),
+            ("Gemfile.lock", b"GEM\n  specs:\n    broken ("),
+            ("Gemfile.lock", b""),
+        ],
+    )
+    def test_malformed_manifest_returns_no_entries(
+        self, tmp_project: Path, filename: str, content: bytes
+    ):
+        (tmp_project / filename).write_bytes(content)
+        result = project_scan(str(tmp_project))
+        assert result["bom"] == []
+
+    def test_malformed_manifest_does_not_hide_healthy_one(self, tmp_project: Path):
+        (tmp_project / "package.json").write_text("{broken")
+        (tmp_project / "go.mod").write_text("require github.com/x/y v1.2.3\n")
+        result = project_scan(str(tmp_project))
+        assert result["bom"] == [
+            {"name": "github.com/x/y", "version": "v1.2.3", "type": "go"}
+        ]
