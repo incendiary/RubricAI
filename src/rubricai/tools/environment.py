@@ -38,14 +38,16 @@ def _validate_env_name(name: str) -> str:
     return name
 
 
-def _env_dir(environment_name: str) -> Path:
+def _env_dir(environment_name: str, *, create: bool = True) -> Path:
     """Return the directory for a named environment, creating it if needed.
 
     Always validates the name to prevent path traversal, regardless of caller.
+    Read-only callers pass ``create=False`` so a mistyped name leaves no directory.
     """
     safe_name = _validate_env_name(environment_name)
     d = _environments_dir() / safe_name
-    d.mkdir(parents=True, exist_ok=True)
+    if create:
+        d.mkdir(parents=True, exist_ok=True)
     return d
 
 
@@ -109,8 +111,8 @@ def env_list() -> dict[str, Any]:
 def env_read(environment_name: str) -> dict[str, Any]:
     """Read the current state for a named environment.
 
-    Creates the environment directory if it does not exist yet and returns
-    an empty state template on first read.
+    Does not create the environment directory: an unknown name returns an
+    empty state template and leaves no trace in ``env_list()``.
 
     Args:
         environment_name: Name of the environment (e.g. ``"production-dmz"``).
@@ -120,7 +122,7 @@ def env_read(environment_name: str) -> dict[str, Any]:
         Environment state dict, plus ``"environment_name"`` key.
     """
     name = _validate_env_name(environment_name)
-    d = _env_dir(name)
+    d = _env_dir(name, create=False)
 
     latest = d / "state_latest.json"
     if latest.exists():

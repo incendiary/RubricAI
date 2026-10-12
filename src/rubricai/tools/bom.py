@@ -29,7 +29,7 @@ def _resolve_ecosystem(ecosystem: str | None, type_: str | None) -> str | None:
 
 
 def _load_state(environment_name: str) -> EnvironmentState:
-    env_dir = _env_dir(environment_name)
+    env_dir = _env_dir(environment_name, create=False)
     latest = env_dir / "state_latest.json"
     if latest.exists():
         data = json.loads(latest.read_text(encoding="utf-8"))
