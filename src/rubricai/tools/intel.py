@@ -73,12 +73,9 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     gh_advisory_record = raw.get("gh_advisory")
     nvd_record = raw.get("nvd")
 
-    # Prefer GitHub Advisory if available, otherwise use NVD
-    primary_record = gh_advisory_record or nvd_record
-
     # CVSS: use GitHub's only when it carries both score and vector, else NVD
     cvss = None
-    if "cvss" in sources and primary_record:
+    if "cvss" in sources:
         cvss_raw = None
         if gh_advisory_record and (
             gh_advisory_record.get("cvss_base")

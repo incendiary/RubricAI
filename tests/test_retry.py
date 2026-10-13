@@ -4,7 +4,7 @@ import httpx
 import pytest
 
 from rubricai.fetchers import retry
-from rubricai.fetchers.retry import fetch_with_retry, fetch_with_timeout_escalation
+from rubricai.fetchers.retry import fetch_with_timeout_escalation
 
 
 @pytest.fixture(autouse=True)
@@ -39,24 +39,23 @@ async def test_timeout_called_once_per_window(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_503_then_200_returns_200():
+async def test_503_then_200_returns_200(monkeypatch):
     codes = iter([503, 200])
-    transport = httpx.MockTransport(lambda r: httpx.Response(next(codes)))
-    async with httpx.AsyncClient(transport=transport) as client:
-        resp = await fetch_with_retry(client, "GET", "https://example.test")
+    _patch_transport(monkeypatch, lambda r: httpx.Response(next(codes)))
+    resp = await fetch_with_timeout_escalation("GET", "https://example.test")
     assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_404_returns_immediately():
+async def test_404_returns_immediately(monkeypatch):
     calls = []
 
     def handler(request):
         calls.append(1)
         return httpx.Response(404)
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        resp = await fetch_with_retry(client, "GET", "https://example.test")
+    _patch_transport(monkeypatch, handler)
+    resp = await fetch_with_timeout_escalation("GET", "https://example.test")
     assert resp.status_code == 404
     assert len(calls) == 1
 
