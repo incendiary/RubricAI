@@ -6,15 +6,15 @@ import threading
 import pytest
 from pydantic import ValidationError
 
-from src.rubricai.schemas.evidence import EvidenceItem
-from src.rubricai.tools.environment import _env_dir as _real_env_dir
-from src.rubricai.tools.environment import (
+from rubricai.schemas.evidence import EvidenceItem
+from rubricai.tools.environment import _env_dir as _real_env_dir
+from rubricai.tools.environment import (
     _write_next_version,
     env_list,
     env_read,
     env_write,
 )
-from src.rubricai.tools.report import report_generate
+from rubricai.tools.report import report_generate
 
 _ENV = "test-env"  # canonical name used in all env tests
 

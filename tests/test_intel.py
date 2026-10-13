@@ -6,8 +6,8 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.rubricai.cache import FileCache
-from src.rubricai.tools.intel import lookup
+from rubricai.cache import FileCache
+from rubricai.tools.intel import lookup
 
 # ---------------------------------------------------------------------------
 # FileCache unit tests
@@ -73,25 +73,25 @@ _MOCK_NVD_RECORD = {
 def mock_fetchers():
     with (
         patch(
-            "src.rubricai.tools.intel.kev_fetcher.fetch",
+            "rubricai.tools.intel.kev_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_KEV),
         ),
         patch(
-            "src.rubricai.tools.intel.epss_fetcher.fetch",
+            "rubricai.tools.intel.epss_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_EPSS),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            "rubricai.tools.intel.nvd_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_NVD_RECORD),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(
                 return_value={"base": 9.8, "vector": "CVSS:3.1/...", "version": "3.1"}
             ),
         ),
         patch(
-            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            "rubricai.tools.intel.poc_fetcher.fetch",
             new=AsyncMock(
                 return_value={
                     "available": True,
@@ -136,23 +136,23 @@ async def test_lookup_include_subset(mock_fetchers):
 async def test_lookup_kev_not_listed():
     with (
         patch(
-            "src.rubricai.tools.intel.kev_fetcher.fetch",
+            "rubricai.tools.intel.kev_fetcher.fetch",
             new=AsyncMock(return_value={"listed": False}),
         ),
         patch(
-            "src.rubricai.tools.intel.epss_fetcher.fetch",
+            "rubricai.tools.intel.epss_fetcher.fetch",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            "rubricai.tools.intel.nvd_fetcher.fetch",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            "rubricai.tools.intel.poc_fetcher.fetch",
             new=AsyncMock(
                 return_value={
                     "available": False,
@@ -190,21 +190,21 @@ _NVD_LOG4SHELL = {
 async def _lookup_with_gh(gh_record):
     with (
         patch(
-            "src.rubricai.tools.intel.gh_advisory_fetcher.fetch",
+            "rubricai.tools.intel.gh_advisory_fetcher.fetch",
             new=AsyncMock(return_value=gh_record),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            "rubricai.tools.intel.nvd_fetcher.fetch",
             new=AsyncMock(return_value=_NVD_LOG4SHELL),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(
                 return_value={"base": 9.8, "vector": "CVSS:3.1/NVD", "version": "3.1"}
             ),
         ),
         patch(
-            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            "rubricai.tools.intel.poc_fetcher.fetch",
             new=AsyncMock(
                 return_value={
                     "available": False,

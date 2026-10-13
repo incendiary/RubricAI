@@ -12,17 +12,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.rubricai.cache import FileCache
-from src.rubricai.fetchers import epss as epss_fetcher
-from src.rubricai.fetchers import kev as kev_fetcher
-from src.rubricai.fetchers import nvd as nvd_fetcher
-from src.rubricai.fetchers import osv as osv_fetcher
-from src.rubricai.fetchers import poc as poc_fetcher
-from src.rubricai.fetchers.nvd import _normalize_keywords
-from src.rubricai.fetchers.poc import _classify
-from src.rubricai.tools.intel import lookup
-from src.rubricai.tools.report import report_generate
-from src.rubricai.tools.scoring import score_evaluate
+from rubricai.cache import FileCache
+from rubricai.fetchers import epss as epss_fetcher
+from rubricai.fetchers import kev as kev_fetcher
+from rubricai.fetchers import nvd as nvd_fetcher
+from rubricai.fetchers import osv as osv_fetcher
+from rubricai.fetchers import poc as poc_fetcher
+from rubricai.fetchers.nvd import _normalize_keywords
+from rubricai.fetchers.poc import _classify
+from rubricai.tools.intel import lookup
+from rubricai.tools.report import report_generate
+from rubricai.tools.scoring import score_evaluate
 
 # ---------------------------------------------------------------------------
 # Shared HTTP mock helpers
@@ -67,7 +67,7 @@ async def test_kev_listed(tmp_path):
     client = _mock_client(_mock_response(_KEV_CATALOG))
     with (
         patch.object(kev_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
     ):
         result = await kev_fetcher.fetch("CVE-2024-1234")
     assert result["listed"] is True
@@ -80,7 +80,7 @@ async def test_kev_not_listed(tmp_path):
     client = _mock_client(_mock_response(_KEV_CATALOG))
     with (
         patch.object(kev_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
     ):
         result = await kev_fetcher.fetch("CVE-9999-9999")
     assert result == {"listed": False}
@@ -92,7 +92,7 @@ async def test_kev_case_insensitive_lookup(tmp_path):
     client = _mock_client(_mock_response(_KEV_CATALOG))
     with (
         patch.object(kev_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.kev.httpx.AsyncClient", return_value=client),
     ):
         result = await kev_fetcher.fetch("cve-2024-1234")
     assert result["listed"] is True
@@ -104,7 +104,7 @@ async def test_kev_cache_prevents_second_http_call(tmp_path):
     with (
         patch.object(kev_fetcher, "_cache", cache),
         patch(
-            "src.rubricai.fetchers.kev.httpx.AsyncClient", return_value=client
+            "rubricai.fetchers.kev.httpx.AsyncClient", return_value=client
         ) as mock_cls,
     ):
         await kev_fetcher.fetch("CVE-2024-1234")
@@ -127,7 +127,7 @@ async def test_epss_returns_parsed_score(tmp_path):
     client = _mock_client(_mock_response(_EPSS_RESPONSE))
     with (
         patch.object(epss_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.epss.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.epss.httpx.AsyncClient", return_value=client),
     ):
         result = await epss_fetcher.fetch("CVE-2024-5678")
     assert result["score"] == pytest.approx(0.72345)
@@ -140,7 +140,7 @@ async def test_epss_empty_data_returns_none(tmp_path):
     client = _mock_client(_mock_response({"data": []}))
     with (
         patch.object(epss_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.epss.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.epss.httpx.AsyncClient", return_value=client),
     ):
         result = await epss_fetcher.fetch("CVE-2099-0001")
     assert result is None
@@ -152,7 +152,7 @@ async def test_epss_cache_prevents_second_http_call(tmp_path):
     with (
         patch.object(epss_fetcher, "_cache", cache),
         patch(
-            "src.rubricai.fetchers.epss.httpx.AsyncClient", return_value=client
+            "rubricai.fetchers.epss.httpx.AsyncClient", return_value=client
         ) as mock_cls,
     ):
         await epss_fetcher.fetch("CVE-2024-5678")
@@ -232,7 +232,7 @@ async def test_nvd_fetch_returns_cve_record(tmp_path):
     client = _mock_client(_mock_response(_NVD_V31_ONLY))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         record = await nvd_fetcher.fetch("CVE-2024-1111")
     assert record is not None
@@ -244,7 +244,7 @@ async def test_nvd_fetch_404_returns_none(tmp_path):
     client = _mock_client(_mock_response({}, status_code=404))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         result = await nvd_fetcher.fetch("CVE-9999-0000")
     assert result is None
@@ -255,7 +255,7 @@ async def test_nvd_fetch_empty_vulnerabilities_returns_none(tmp_path):
     client = _mock_client(_mock_response({"vulnerabilities": []}))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         result = await nvd_fetcher.fetch("CVE-9999-0001")
     assert result is None
@@ -267,7 +267,7 @@ async def test_nvd_cvss_v31_preferred_over_v30(tmp_path):
     client = _mock_client(_mock_response(_NVD_BOTH_V31_AND_V30))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         cvss = await nvd_fetcher.fetch_cvss("CVE-2024-2222")
     assert cvss["version"] == "3.1"
@@ -280,7 +280,7 @@ async def test_nvd_cvss_falls_back_to_v30(tmp_path):
     client = _mock_client(_mock_response(_NVD_V30_ONLY))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3333")
     assert cvss["version"] == "3.0"
@@ -293,7 +293,7 @@ async def test_nvd_fetch_cvss_returns_none_when_fetch_returns_none(tmp_path):
     client = _mock_client(_mock_response({"vulnerabilities": []}))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         cvss = await nvd_fetcher.fetch_cvss("CVE-9999-0000")
     assert cvss is None
@@ -306,7 +306,7 @@ async def test_nvd_cvss_returns_none_when_no_metrics(tmp_path):
     client = _mock_client(_mock_response(no_metrics))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         cvss = await nvd_fetcher.fetch_cvss("CVE-2024-4444")
     assert cvss is None
@@ -318,7 +318,7 @@ async def test_nvd_cache_prevents_second_http_call(tmp_path):
     with (
         patch.object(nvd_fetcher, "_cache", cache),
         patch(
-            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client
+            "rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client
         ) as mock_cls,
     ):
         await nvd_fetcher.fetch("CVE-2024-5555")
@@ -363,7 +363,7 @@ async def test_nvd_search_returns_cve_list(tmp_path):
     client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-1234")))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         results = await nvd_fetcher.search("nginx 1.20", days_back=7)
     assert len(results) == 1
@@ -386,9 +386,7 @@ async def test_nvd_search_cache_key_includes_vendor(tmp_path):
     apache_client = _mock_client(_mock_response(_nvd_search_response("CVE-2024-1111")))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch(
-            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=apache_client
-        ),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=apache_client),
     ):
         apache_results = await nvd_fetcher.search("httpd", vendor="apache", days_back=7)
 
@@ -396,7 +394,7 @@ async def test_nvd_search_cache_key_includes_vendor(tmp_path):
     with (
         patch.object(nvd_fetcher, "_cache", cache),
         patch(
-            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=nginx_client
+            "rubricai.fetchers.nvd.httpx.AsyncClient", return_value=nginx_client
         ) as nginx_cls,
     ):
         nginx_results = await nvd_fetcher.search("httpd", vendor="nginx", days_back=7)
@@ -413,7 +411,7 @@ async def test_nvd_search_empty_results(tmp_path):
     client = _mock_client(_mock_response({"totalResults": 0, "vulnerabilities": []}))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         results = await nvd_fetcher.search("unknown-package 99.0", days_back=7)
     assert results == []
@@ -425,7 +423,7 @@ async def test_nvd_search_404_returns_empty(tmp_path):
     client = _mock_client(_mock_response({}, status_code=404))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         results = await nvd_fetcher.search("Ubuntu 20.04.6 LTS", days_back=7)
     assert results == []
@@ -452,7 +450,7 @@ async def test_nvd_search_description_truncated(tmp_path):
     client = _mock_client(_mock_response(response))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         results = await nvd_fetcher.search("anything", days_back=1)
     assert len(results[0]["description"]) == 300
@@ -466,7 +464,7 @@ async def test_nvd_search_max_results_caps_pagination(tmp_path):
     client = _mock_client(_mock_response(big_response))
     with (
         patch.object(nvd_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
     ):
         results = await nvd_fetcher.search("ubuntu", days_back=3650, max_results=1)
     assert len(results) == 1  # stopped after first page reached the cap
@@ -478,7 +476,7 @@ async def test_nvd_search_cache_prevents_second_call(tmp_path):
     with (
         patch.object(nvd_fetcher, "_cache", cache),
         patch(
-            "src.rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client
+            "rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client
         ) as mock_cls,
     ):
         await nvd_fetcher.search("redis 7.0", days_back=7)
@@ -551,7 +549,7 @@ async def test_osv_search_returns_normalised_cves(tmp_path):
     client = _osv_mock_client(resp)
     with (
         patch.object(osv_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
     ):
         results = await osv_fetcher.search("log4j-core", "Maven", version="2.14.0")
 
@@ -577,7 +575,7 @@ async def test_osv_search_no_cve_alias_skipped(tmp_path):
     client = _osv_mock_client(resp)
     with (
         patch.object(osv_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
     ):
         results = await osv_fetcher.search("some-package", "PyPI")
 
@@ -593,7 +591,7 @@ async def test_osv_search_filters_by_days_back(tmp_path):
     client = _osv_mock_client(resp)
     with (
         patch.object(osv_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
     ):
         results = await osv_fetcher.search("requests", "PyPI", days_back=30)
 
@@ -609,7 +607,7 @@ async def test_osv_search_http_error_returns_empty(tmp_path):
     client = _osv_mock_client(resp)
     with (
         patch.object(osv_fetcher, "_cache", cache),
-        patch("src.rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
+        patch("rubricai.fetchers.osv.httpx.AsyncClient", return_value=client),
     ):
         results = await osv_fetcher.search("express", "npm")
 
@@ -618,7 +616,7 @@ async def test_osv_search_http_error_returns_empty(tmp_path):
 
 def test_osv_ecosystem_alias_resolved():
     """Developer shorthand 'maven' resolves to canonical 'Maven'."""
-    from src.rubricai.fetchers.osv import _resolve_ecosystem
+    from rubricai.fetchers.osv import _resolve_ecosystem
 
     assert _resolve_ecosystem("maven") == "Maven"
     assert _resolve_ecosystem("Maven") == "Maven"
@@ -693,7 +691,7 @@ async def test_poc_fetch_with_exploit_refs_returns_available():
         ]
     }
     with patch(
-        "src.rubricai.fetchers.poc.nvd.fetch",
+        "rubricai.fetchers.poc.nvd.fetch",
         new=AsyncMock(return_value=record_with_refs),
     ):
         result = await poc_fetcher.fetch("CVE-2024-1111")
@@ -705,7 +703,7 @@ async def test_poc_fetch_with_exploit_refs_returns_available():
 async def test_poc_no_nvd_record_returns_not_available():
     """When NVD has no record for the CVE, PoC fetch returns available=False."""
     with patch(
-        "src.rubricai.fetchers.poc.nvd.fetch",
+        "rubricai.fetchers.poc.nvd.fetch",
         new=AsyncMock(return_value=None),
     ):
         result = await poc_fetcher.fetch("CVE-9999-9999")
@@ -756,23 +754,23 @@ _MOCK_NVD = {
 def _patch_fetchers(kev, epss, nvd_record, cvss, poc):
     return (
         patch(
-            "src.rubricai.tools.intel.kev_fetcher.fetch",
+            "rubricai.tools.intel.kev_fetcher.fetch",
             new=AsyncMock(return_value=kev),
         ),
         patch(
-            "src.rubricai.tools.intel.epss_fetcher.fetch",
+            "rubricai.tools.intel.epss_fetcher.fetch",
             new=AsyncMock(return_value=epss),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            "rubricai.tools.intel.nvd_fetcher.fetch",
             new=AsyncMock(return_value=nvd_record),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(return_value=cvss),
         ),
         patch(
-            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            "rubricai.tools.intel.poc_fetcher.fetch",
             new=AsyncMock(return_value=poc),
         ),
     )
@@ -830,7 +828,7 @@ def test_gh_advisory_normalises_log4shell_payload():
     import json
     from pathlib import Path
 
-    from src.rubricai.fetchers.gh_advisory import _normalize_advisory
+    from rubricai.fetchers.gh_advisory import _normalize_advisory
 
     payload = json.loads(
         (Path(__file__).parent / "fixtures" / "ghsa_log4shell.json").read_text()
@@ -849,7 +847,7 @@ def test_gh_advisory_normalises_log4shell_payload():
 
 @pytest.fixture
 def gh(tmp_path, monkeypatch):
-    from src.rubricai.fetchers import gh_advisory
+    from rubricai.fetchers import gh_advisory
 
     monkeypatch.setattr(gh_advisory, "_cache", FileCache(tmp_path))
     monkeypatch.setattr(gh_advisory, "_blocked_until", 0.0)

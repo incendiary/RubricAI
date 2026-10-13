@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.rubricai.tools.project_scan import project_scan
+from rubricai.tools.project_scan import project_scan
 
 
 @pytest.fixture

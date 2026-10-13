@@ -9,11 +9,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from src.rubricai.tools.bom import bom_check, bom_update
-from src.rubricai.tools.environment import env_read, env_write
-from src.rubricai.tools.intel import lookup as intel_lookup
-from src.rubricai.tools.report import report_generate
-from src.rubricai.tools.scoring import score_evaluate
+from rubricai.tools.bom import bom_check, bom_update
+from rubricai.tools.environment import env_read, env_write
+from rubricai.tools.intel import lookup as intel_lookup
+from rubricai.tools.report import report_generate
+from rubricai.tools.scoring import score_evaluate
 
 _ENV = "test-e2e-workflow"
 
@@ -59,19 +59,19 @@ def mock_network():
     """Mock all external fetcher calls."""
     with (
         patch(
-            "src.rubricai.tools.intel.kev_fetcher.fetch",
+            "rubricai.tools.intel.kev_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_KEV),
         ),
         patch(
-            "src.rubricai.tools.intel.epss_fetcher.fetch",
+            "rubricai.tools.intel.epss_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_EPSS),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch",
+            "rubricai.tools.intel.nvd_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_NVD_RECORD),
         ),
         patch(
-            "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
             new=AsyncMock(
                 return_value={
                     "base": 9.8,
@@ -81,11 +81,11 @@ def mock_network():
             ),
         ),
         patch(
-            "src.rubricai.tools.intel.poc_fetcher.fetch",
+            "rubricai.tools.intel.poc_fetcher.fetch",
             new=AsyncMock(return_value=_MOCK_POC),
         ),
         patch(
-            "src.rubricai.tools.bom.nvd_fetcher.search",
+            "rubricai.tools.bom.nvd_fetcher.search",
             new=AsyncMock(return_value=_MOCK_NVD_SEARCH_RESULT),
         ),
     ):

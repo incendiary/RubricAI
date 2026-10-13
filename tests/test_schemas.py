@@ -5,13 +5,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from src.rubricai.schemas.assessment import (
+from rubricai.schemas.assessment import (
     Assessment,
 )
-from src.rubricai.schemas.finding import (
+from rubricai.schemas.finding import (
     Finding,
 )
-from src.rubricai.schemas.intel import (
+from rubricai.schemas.intel import (
     IntelResult,
 )
 

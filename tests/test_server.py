@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from fastmcp.exceptions import ToolError
 
-from src.rubricai.server import mcp
+from rubricai.server import mcp
 
 # ---------------------------------------------------------------------------
 # Tool registration
@@ -74,23 +74,23 @@ class TestIntelLookupValidation:
 
         with (
             patch(
-                "src.rubricai.tools.intel.kev_fetcher.fetch",
+                "rubricai.tools.intel.kev_fetcher.fetch",
                 new=AsyncMock(return_value={"listed": False}),
             ),
             patch(
-                "src.rubricai.tools.intel.epss_fetcher.fetch",
+                "rubricai.tools.intel.epss_fetcher.fetch",
                 new=AsyncMock(return_value=None),
             ),
             patch(
-                "src.rubricai.tools.intel.nvd_fetcher.fetch",
+                "rubricai.tools.intel.nvd_fetcher.fetch",
                 new=AsyncMock(return_value=None),
             ),
             patch(
-                "src.rubricai.tools.intel.nvd_fetcher.fetch_cvss",
+                "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
                 new=AsyncMock(return_value=None),
             ),
             patch(
-                "src.rubricai.tools.intel.poc_fetcher.fetch",
+                "rubricai.tools.intel.poc_fetcher.fetch",
                 new=AsyncMock(
                     return_value={
                         "available": False,

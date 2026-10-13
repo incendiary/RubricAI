@@ -8,9 +8,9 @@ Each fetcher must return its documented empty value and never raise.
 import httpx
 import pytest
 
-from src.rubricai.cache import FileCache
-from src.rubricai.fetchers import epss, gh_advisory, kev, nvd, osv, poc
-from src.rubricai.tools.intel import lookup
+from rubricai.cache import FileCache
+from rubricai.fetchers import epss, gh_advisory, kev, nvd, osv, poc
+from rubricai.tools.intel import lookup
 
 CVE = "CVE-2024-1234"
 _NO_POC = {"available": False, "confidence": "unknown", "references": []}
