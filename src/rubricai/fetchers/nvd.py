@@ -5,7 +5,7 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 
-import httpx  # noqa: F401 — required by tests for AsyncClient mocking
+import httpx
 
 from ..cache import FileCache
 from .retry import fetch_with_timeout_escalation
@@ -37,27 +37,20 @@ async def _fetch_with_auth_fallback(
     This helper tries authenticated first, then retries without auth on 503.
     """
     headers = headers or {}
-
-    # Try with auth headers first
-    if headers:
-        resp = await fetch_with_timeout_escalation(
-            method, url, params=params, headers=headers
-        )
-        if resp.status_code != 503:
-            return resp
-
+    resp = await fetch_with_timeout_escalation(
+        method, url, params=params, headers=headers
+    )
+    if headers and resp.status_code == 503:
         # Auth service is down (503) — retry without auth
         _logger.warning(
             "NVD auth service returned 503; retrying without API key. "
             "To test your API key, request one at "
             "https://nvd.nist.gov/developers/request-an-api-key"
         )
-        return await fetch_with_timeout_escalation(
+        resp = await fetch_with_timeout_escalation(
             method, url, params=params, headers={}
         )
-
-    # No auth headers — just fetch normally
-    return await fetch_with_timeout_escalation(method, url, params=params, headers={})
+    return resp
 
 
 def _process_cve(cve: dict) -> dict:
