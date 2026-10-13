@@ -2,7 +2,9 @@ services:
   rubricai:
     build: .
     ports:
-      - "8000:8000"
+      # Loopback only. To expose on the network, change to "8000:8000" and set
+      # RUBRICAI_API_KEY (and TLS) first.
+      - "127.0.0.1:8000:8000"
     environment:
       - RUBRICAI_TRANSPORT=sse
       - RUBRICAI_REPORT_DIR=/reports

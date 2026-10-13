@@ -162,7 +162,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host.
+Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `./reports/` on the host. `docker-compose.yml` publishes the port on loopback only (`127.0.0.1:8000`); edit the `ports:` entry to expose it on the network, with an API key and TLS.
 
 > **Security note:** The container runs as a non-root user (`rubricai`). Set
 > `RUBRICAI_API_KEY` to require Bearer token authentication on all HTTP requests
