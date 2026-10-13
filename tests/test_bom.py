@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from pydantic import ValidationError
 
-from src.rubricai.tools.bom import bom_check, bom_update
+from rubricai.tools.bom import bom_check, bom_update
 
 _ENV = "test-env"  # canonical environment name for all bom tests
 
@@ -114,7 +114,7 @@ class TestBomCheck:
             {"id": "CVE-2024-0001", "description": "Buffer overflow", "cvss_base": 8.8},
         ]
         with patch(
-            "src.rubricai.tools.bom.nvd_fetcher.search",
+            "rubricai.tools.bom.nvd_fetcher.search",
             new=AsyncMock(return_value=mock_cves),
         ):
             result = await bom_check(_ENV, days_back=7)
@@ -128,7 +128,7 @@ class TestBomCheck:
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
         bom_update([{"name": "curl", "version": "8.0.0"}], _ENV)
         with patch(
-            "src.rubricai.tools.bom.nvd_fetcher.search",
+            "rubricai.tools.bom.nvd_fetcher.search",
             new=AsyncMock(return_value=[]),
         ):
             result = await bom_check(_ENV, days_back=30)
@@ -142,7 +142,7 @@ class TestBomCheck:
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
         bom_update([{"name": "openssh", "version": "9.0"}], _ENV)
         mock_search = AsyncMock(return_value=[])
-        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
+        with patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
             await bom_check(_ENV, days_back=14)
 
         mock_search.assert_called_once_with("openssh", days_back=14, vendor=None)
@@ -152,7 +152,7 @@ class TestBomCheck:
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path))
         bom_update([{"name": "haproxy", "version": "2.6"}], _ENV)
         with patch(
-            "src.rubricai.tools.bom.nvd_fetcher.search",
+            "rubricai.tools.bom.nvd_fetcher.search",
             new=AsyncMock(return_value=[]),
         ):
             result = await bom_check(_ENV)
@@ -181,8 +181,8 @@ class TestBomCheck:
         )
         mock_nvd = AsyncMock(return_value=[])
         with (
-            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
-            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+            patch("rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
         ):
             result = await bom_check(_ENV, days_back=30)
 
@@ -205,8 +205,8 @@ class TestBomCheck:
         mock_osv = AsyncMock(return_value=[])
         mock_nvd = AsyncMock(return_value=[])
         with (
-            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
-            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+            patch("rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
         ):
             await bom_check(_ENV)
 
@@ -222,8 +222,8 @@ class TestBomCheck:
         mock_osv = AsyncMock(return_value=[])
         mock_nvd = AsyncMock(return_value=[])
         with (
-            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
-            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+            patch("rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
         ):
             await bom_check(_ENV)
 
@@ -240,8 +240,8 @@ class TestBomCheck:
         mock_osv = AsyncMock(return_value=[])
         mock_nvd = AsyncMock(return_value=[])
         with (
-            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
-            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+            patch("rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
         ):
             await bom_check(_ENV)
 
@@ -256,8 +256,8 @@ class TestBomCheck:
         mock_osv = AsyncMock(return_value=[])
         mock_nvd = AsyncMock(return_value=[])
         with (
-            patch("src.rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
-            patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
+            patch("rubricai.tools.bom.osv_fetcher.search", new=mock_osv),
+            patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_nvd),
         ):
             await bom_check(_ENV)
 
@@ -276,7 +276,7 @@ class TestBomCheck:
             _ENV,
         )
         mock_search = AsyncMock(return_value=[])
-        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
+        with patch("rubricai.tools.bom.nvd_fetcher.search", new=mock_search):
             await bom_check(_ENV)
 
         assert mock_search.call_count == 3
@@ -294,7 +294,7 @@ class TestBomConcurrency:
             await release.wait()
             return []
 
-        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=slow_search):
+        with patch("rubricai.tools.bom.nvd_fetcher.search", new=slow_search):
             task = asyncio.create_task(bom_check(_ENV))
             await started.wait()
             bom_update([{"name": "new", "version": "2"}], _ENV)
@@ -319,7 +319,7 @@ class TestBomConcurrency:
             await asyncio.sleep(0.05 * (len(names) - names.index(name)) / 6)
             return [{"id": f"CVE-{name}"}]
 
-        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=search):
+        with patch("rubricai.tools.bom.nvd_fetcher.search", new=search):
             result = await bom_check(_ENV)
 
         assert list(result["findings"]) == [f"{n} 1" for n in names]
@@ -338,7 +338,7 @@ class TestBomConcurrency:
             active -= 1
             return []
 
-        with patch("src.rubricai.tools.bom.nvd_fetcher.search", new=search):
+        with patch("rubricai.tools.bom.nvd_fetcher.search", new=search):
             await bom_check(_ENV)
 
         assert peak == 3

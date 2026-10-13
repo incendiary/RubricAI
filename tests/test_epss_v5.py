@@ -4,10 +4,10 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.rubricai.policy.epss_v5 import evaluate
-from src.rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
-from src.rubricai.schemas.finding import Finding
-from src.rubricai.schemas.intel import EpssInfo, IntelResult, KevInfo
+from rubricai.policy.epss_v5 import evaluate
+from rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
+from rubricai.schemas.finding import Finding
+from rubricai.schemas.intel import EpssInfo, IntelResult, KevInfo
 
 
 def _make_intel(
@@ -179,7 +179,7 @@ class TestRegistry:
         assert fn is evaluate
 
     def test_get_evaluator_returns_chml_for_default(self):
-        from src.rubricai.policy.chml import evaluate as chml_evaluate
+        from rubricai.policy.chml import evaluate as chml_evaluate
 
         fn = get_evaluator(None)
         assert fn is chml_evaluate
@@ -195,7 +195,7 @@ class TestRegistry:
 
 class TestPolicyGet:
     def test_policy_get_epss_v5(self):
-        from src.rubricai.tools.policy import policy_get
+        from rubricai.tools.policy import policy_get
 
         result = policy_get("epss-v5")
         assert result["policy_version"] == "epss-v5"
@@ -205,7 +205,7 @@ class TestPolicyGet:
         assert result["lanes"]["medium"]["target_days"] == 30
 
     def test_policy_get_list(self):
-        from src.rubricai.tools.policy import policy_get
+        from rubricai.tools.policy import policy_get
 
         result = policy_get("list")
         assert "available_policies" in result
@@ -213,7 +213,7 @@ class TestPolicyGet:
         assert "chml-v0.2" in result["available_policies"]
 
     def test_policy_get_default_is_chml(self):
-        from src.rubricai.tools.policy import policy_get
+        from rubricai.tools.policy import policy_get
 
         result = policy_get(None)
         assert result["policy_version"] == "chml-v0.2"

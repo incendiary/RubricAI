@@ -2,11 +2,11 @@
 
 from datetime import UTC, datetime
 
-from src.rubricai.fetchers.nvd import extract_automatable, extract_technical_impact
-from src.rubricai.policy.bod_26_04 import evaluate
-from src.rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
-from src.rubricai.schemas.finding import Finding
-from src.rubricai.schemas.intel import CvssInfo, IntelResult, KevInfo
+from rubricai.fetchers.nvd import extract_automatable, extract_technical_impact
+from rubricai.policy.bod_26_04 import evaluate
+from rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
+from rubricai.schemas.finding import Finding
+from rubricai.schemas.intel import CvssInfo, IntelResult, KevInfo
 
 
 def _make_intel(
@@ -297,7 +297,7 @@ class TestVulnrichmentExtraction:
 
 class TestPolicyGet:
     def test_bod_26_04_definition(self):
-        from src.rubricai.tools.policy import policy_get
+        from rubricai.tools.policy import policy_get
 
         result = policy_get("bod-26-04")
         assert result["policy_version"] == "bod-26-04"
@@ -308,7 +308,7 @@ class TestPolicyGet:
         assert result["lanes"]["low"]["patch_train"] is True
 
     def test_bod_26_04_in_list(self):
-        from src.rubricai.tools.policy import policy_get
+        from rubricai.tools.policy import policy_get
 
         result = policy_get("list")
         assert "bod-26-04" in result["available_policies"]
@@ -320,7 +320,7 @@ class TestRegistry:
 
     def test_get_evaluator_returns_bod(self):
         fn = get_evaluator("bod-26-04")
-        from src.rubricai.policy.bod_26_04 import evaluate as bod_evaluate
+        from rubricai.policy.bod_26_04 import evaluate as bod_evaluate
 
         assert fn is bod_evaluate
 

@@ -4,9 +4,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.rubricai.schemas.finding import Finding
-from src.rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult, KevInfo
-from src.rubricai.scoring.priority import compute_priority_score
+from rubricai.schemas.finding import Finding
+from rubricai.schemas.intel import CvssInfo, EpssInfo, IntelResult, KevInfo
+from rubricai.scoring.priority import compute_priority_score
 
 
 def _make_intel(
@@ -209,7 +209,7 @@ class TestPriorityScoreEdgeCases:
 
 class TestPriorityScoreInAssessment:
     def test_score_evaluate_populates_priority_score(self):
-        from src.rubricai.tools.scoring import score_evaluate
+        from rubricai.tools.scoring import score_evaluate
 
         finding = {
             "id": "FIND-RPS-001",
@@ -234,7 +234,7 @@ class TestPriorityScoreInAssessment:
         assert "total" in result["priority_score_breakdown"]
 
     def test_score_evaluate_includes_breakdown_keys(self):
-        from src.rubricai.tools.scoring import score_evaluate
+        from rubricai.tools.scoring import score_evaluate
 
         finding = {
             "id": "FIND-RPS-002",

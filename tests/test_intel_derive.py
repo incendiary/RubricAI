@@ -2,13 +2,13 @@
 
 from datetime import UTC, datetime
 
-from src.rubricai.intel_derive import (
+from rubricai.intel_derive import (
     _infer_utility_from_cvss,
     _infer_utility_from_description,
     _parse_cvss_vector,
     derive_finding_context,
 )
-from src.rubricai.schemas.intel import CvssInfo, IntelResult
+from rubricai.schemas.intel import CvssInfo, IntelResult
 
 
 def _make_intel(
@@ -235,7 +235,7 @@ class TestDeriveFindingContext:
         ctx = derive_finding_context(intel)
         # Values must be Preconditions-compatible (no None) so the dict can be
         # passed directly to Finding.preconditions without a validation error.
-        from src.rubricai.schemas.finding import Preconditions
+        from rubricai.schemas.finding import Preconditions
 
         p = Preconditions.model_validate(ctx["preconditions"])
         assert p.privileges_required == "unknown"

@@ -5,9 +5,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from src.rubricai.tools.policy import policy_get
-from src.rubricai.tools.report import report_generate
-from src.rubricai.tools.scoring import score_evaluate
+from rubricai.tools.policy import policy_get
+from rubricai.tools.report import report_generate
+from rubricai.tools.scoring import score_evaluate
 
 
 def _finding_dict(**overrides) -> dict:
@@ -156,11 +156,11 @@ class TestReportGenerate:
                 "verified": True,
             }
         ]
-        from src.rubricai.schemas.assessment import Assessment
-        from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.schemas.finding import Finding
-        from src.rubricai.schemas.intel import IntelResult
-        from src.rubricai.tools.report import _render_html_card
+        from rubricai.schemas.assessment import Assessment
+        from rubricai.schemas.evidence import EvidenceItem
+        from rubricai.schemas.finding import Finding
+        from rubricai.schemas.intel import IntelResult
+        from rubricai.tools.report import _render_html_card
 
         f = Finding.model_validate(_finding_dict())
         i = IntelResult.model_validate(
@@ -175,11 +175,11 @@ class TestReportGenerate:
     def test_pdf_appendix_contains_evidence_content(self, tmp_path, monkeypatch):
         """include_evidence_appendix=True renders evidence content in appendix."""
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
-        from src.rubricai.schemas.assessment import Assessment
-        from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.schemas.finding import Finding
-        from src.rubricai.schemas.intel import IntelResult
-        from src.rubricai.tools.report import _render_html_card
+        from rubricai.schemas.assessment import Assessment
+        from rubricai.schemas.evidence import EvidenceItem
+        from rubricai.schemas.finding import Finding
+        from rubricai.schemas.intel import IntelResult
+        from rubricai.tools.report import _render_html_card
 
         f = Finding.model_validate(_finding_dict())
         i = IntelResult.model_validate(
@@ -209,11 +209,11 @@ class TestReportGenerate:
         fake_png = tmp_path / "screenshot.png"
         fake_png.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)  # PNG header stub
 
-        from src.rubricai.schemas.assessment import Assessment
-        from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.schemas.finding import Finding
-        from src.rubricai.schemas.intel import IntelResult
-        from src.rubricai.tools.report import _render_html_card
+        from rubricai.schemas.assessment import Assessment
+        from rubricai.schemas.evidence import EvidenceItem
+        from rubricai.schemas.finding import Finding
+        from rubricai.schemas.intel import IntelResult
+        from rubricai.tools.report import _render_html_card
 
         f = Finding.model_validate(_finding_dict())
         i = IntelResult.model_validate(
@@ -239,8 +239,8 @@ class TestReportGenerate:
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
         monkeypatch.setenv("RUBRICAI_ENV_DIR", str(tmp_path / "envs"))
 
-        from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.tools.report import _prepare_appendix_items
+        from rubricai.schemas.evidence import EvidenceItem
+        from rubricai.tools.report import _prepare_appendix_items
 
         ev = [
             EvidenceItem.model_validate(
@@ -267,8 +267,8 @@ class TestReportGenerate:
         escape_link = tmp_path / "reports" / "escape.txt"
         escape_link.symlink_to("/etc/hostname")
 
-        from src.rubricai.schemas.evidence import EvidenceItem
-        from src.rubricai.tools.report import _prepare_appendix_items
+        from rubricai.schemas.evidence import EvidenceItem
+        from rubricai.tools.report import _prepare_appendix_items
 
         ev = [
             EvidenceItem.model_validate(
