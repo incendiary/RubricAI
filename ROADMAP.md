@@ -56,6 +56,7 @@ verify** the change.
 | — | ✅ Done | **v1.6.0** — `vendor_patch` mitigation type; patched findings resolve to Low across all 3 policies; `score_compare` tool for side-by-side policy comparison; workflow prompt schema reference |
 | — | ✅ Done | **v1.7.0** — GitHub Advisory Database as primary intel source with NVD fallback; auto-incrementing HTTP timeouts (5s, 10s, 30s); NVD auth fallback on 503; examples updated with sharing links and PDF evidence reports |
 | — | ✅ Done | **v1.7.1** — Review remediation (RA-1 to RA-9, RA-11). GitHub Advisory CVSS/description mapping fixed with per-field NVD merge, rate-limit guard and negative cache; HTTP worst-case latency cut from about 200s to about 45s; locked BOM/state writes; `env_read` no longer creates environments; atomic cache writes and isolated tests; SSE transport hardened (**behaviour change: `sse` refuses to start without `RUBRICAI_API_KEY` unless `RUBRICAI_ALLOW_NO_AUTH=1`; TLS cert/key must be set together**); `project_scan` size and XML-entity guards; 41 Dependabot alerts cleared (lock file bumps); `env_migrate_legacy` tool removed (12 tools to 11); CI hardened (pinned actions, audit job, weekly schedule, coverage gate). |
+| — | ✅ Done | **v1.7.2** — Resilience and cleanup (RA-10, RA-12, RA-13). All fetchers return their empty value on malformed 200 bodies and NVD HTTP errors no longer crash `intel_lookup`; `nvd.search` keeps partial results when a later keyword fails; 104 new resilience tests (coverage 92% to 96%); `retry.py` collapsed to one function with identical behaviour (about 80 net lines removed); tests import `rubricai` instead of `src.rubricai`; repo `CLAUDE.md` rewritten. No breaking changes. |
 
 ## Open work
 
@@ -341,6 +342,8 @@ creates a permanent empty environment that then appears in `env_list`.
 
 #### RA-10: Close test gaps on resilience paths
 
+**Status: Done in v1.7.2 (PR #176).**
+
 | | |
 |-|-|
 | Priority | Medium |
@@ -367,6 +370,8 @@ Coverage today: `main.py` 0%, `gh_advisory.py` 52%, `retry.py` 73% (the escalati
 
 #### RA-12: Simplification pass (ponytail findings)
 
+**Status: Done in v1.7.2 (PRs #177, #178).**
+
 | | |
 |-|-|
 | Priority | Low |
@@ -376,6 +381,8 @@ Coverage today: `main.py` 0%, `gh_advisory.py` 52%, `retry.py` 73% (the escalati
 Apply the cuts listed under "Ponytail review" below that earlier items did not already remove. Behaviour must not change: the suite stays green and coverage does not drop.
 
 #### RA-13: Documentation and repo hygiene
+
+**Status: Done in v1.7.2 (PR #175).**
 
 | | |
 |-|-|
