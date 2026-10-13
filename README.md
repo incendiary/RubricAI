@@ -171,11 +171,11 @@ Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `
 > is set explicitly. It also exits if only one of `RUBRICAI_TLS_CERT` and
 > `RUBRICAI_TLS_KEY` is set, rather than silently serving plain HTTP.
 >
-> **Bind address:** FastMCP 3.4.2 (the locked version) binds to `127.0.0.1:8000` by
-> default, and `src/main.py` does not override it. Setting `FASTMCP_HOST=0.0.0.0`
-> makes the server listen on all interfaces. The container path (published port
-> reachability with the default bind) has not been verified end to end, as no
-> Docker environment was available when this was written.
+> **Bind address:** FastMCP binds to `127.0.0.1:8000` by default, which a published
+> container port cannot reach. The Docker image therefore sets `FASTMCP_HOST=0.0.0.0`
+> and `FASTMCP_PORT=8000`, and defines a `HEALTHCHECK` against `/health` (plain HTTP:
+> override it if you enable TLS). Outside Docker the default stays loopback-only; set
+> `FASTMCP_HOST` yourself to listen elsewhere.
 
 ### OpenAI (GPT-4o, o3, Agents SDK)
 
