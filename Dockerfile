@@ -23,7 +23,14 @@ USER rubricai
 ENV RUBRICAI_TRANSPORT=sse
 ENV RUBRICAI_REPORT_DIR=/reports
 ENV RUBRICAI_ENV_DIR=/state
+# FastMCP binds 127.0.0.1 by default, which the published port cannot reach.
+ENV FASTMCP_HOST=0.0.0.0
+ENV FASTMCP_PORT=8000
 
 EXPOSE 8000
+
+# /health is exempt from API-key auth. Plain HTTP: override this if TLS is enabled.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
 
 CMD ["python", "-m", "src.main"]
