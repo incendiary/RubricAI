@@ -19,6 +19,7 @@ _logger = logging.getLogger(__name__)
 
 _MAX_RETRIES = 3
 _BACKOFF_BASE = 1.0  # seconds — doubles each retry (1, 2, 4)
+_RETRYABLE = (429, 500, 502, 503, 504)
 
 
 def _timeout_windows() -> tuple[int, ...]:
@@ -32,88 +33,6 @@ def _timeout_windows() -> tuple[int, ...]:
     return (5, 10, min(30, cap))
 
 
-async def fetch_with_retry(
-    client: httpx.AsyncClient,
-    method: str,
-    url: str,
-    *,
-    max_retries: int = _MAX_RETRIES,
-    **kwargs,
-) -> httpx.Response:
-    """Execute an HTTP request with exponential backoff on transient failures.
-
-    Retries on: 429 (rate limit), 503 (service unavailable), 5xx server errors,
-    and network-level httpx errors. Non-retryable errors (4xx except 429) are
-    returned immediately for the caller to handle (e.g. 404).
-
-    Args:
-        client: An httpx.AsyncClient instance.
-        method: HTTP method ("GET" or "POST").
-        url: Request URL.
-        max_retries: Maximum number of retry attempts (default: 3).
-        **kwargs: Passed through to client.request().
-
-    Returns:
-        The httpx.Response on success or final attempt.
-
-    Raises:
-        httpx.HTTPError: After all retries exhausted on network errors.
-    """
-    last_exc: Exception | None = None
-
-    for attempt in range(max_retries + 1):
-        try:
-            resp = await client.request(method, url, **kwargs)
-
-            # Non-retryable client errors (except 429)
-            if 400 <= resp.status_code < 500 and resp.status_code != 429:
-                return resp
-
-            # Retryable server errors
-            if resp.status_code in (429, 500, 502, 503, 504):
-                if attempt < max_retries:
-                    wait = _BACKOFF_BASE * (2**attempt)
-                    _logger.warning(
-                        "HTTP %d from %s — retry %d/%d in %.1fs",
-                        resp.status_code,
-                        url,
-                        attempt + 1,
-                        max_retries,
-                        wait,
-                    )
-                    await asyncio.sleep(wait)
-                    continue
-                # Final attempt — return the error response for caller to handle
-                return resp
-
-            return resp
-
-        except httpx.TimeoutException:
-            # Escalation to a longer window is the retry for timeouts
-            raise
-
-        except httpx.HTTPError as exc:
-            last_exc = exc
-            if attempt < max_retries:
-                wait = _BACKOFF_BASE * (2**attempt)
-                _logger.warning(
-                    "%s fetching %s — retry %d/%d in %.1fs",
-                    type(exc).__name__,
-                    url,
-                    attempt + 1,
-                    max_retries,
-                    wait,
-                )
-                await asyncio.sleep(wait)
-            else:
-                raise
-
-    # Should not reach here, but satisfy type checker
-    if last_exc:
-        raise last_exc
-    raise httpx.HTTPError("Retry exhausted")  # pragma: no cover
-
-
 async def fetch_with_timeout_escalation(
     method: str,
     url: str,
@@ -122,13 +41,14 @@ async def fetch_with_timeout_escalation(
     max_retries: int = _MAX_RETRIES,
     **kwargs,
 ) -> httpx.Response:
-    """Execute an HTTP request with automatic timeout escalation on timeout errors.
+    """Execute an HTTP request with exponential backoff and timeout escalation.
 
     Tries the request with increasing timeout windows (default: 5s → 10s → 30s,
     the last capped by RUBRICAI_HTTP_TIMEOUT).
     If a timeout occurs, escalates to the next window and retries.
     Within each window, 429/5xx/network errors use exponential backoff;
-    timeouts are not retried in-window.
+    timeouts are not retried in-window. Other 4xx responses (e.g. 404) are
+    returned immediately for the caller to handle.
 
     This is useful for APIs that may be slow or behind congested networks; it
     avoids a quick failure on constrained timeouts while still failing fast if
@@ -147,15 +67,41 @@ async def fetch_with_timeout_escalation(
     Raises:
         httpx.HTTPError: After all timeout windows and retries exhausted.
     """
-    last_exc: Exception | None = None
     timeout_windows = timeout_windows or _timeout_windows()
 
     for timeout_attempt, timeout_sec in enumerate(timeout_windows):
         try:
             async with httpx.AsyncClient(timeout=timeout_sec) as client:
-                resp = await fetch_with_retry(
-                    client, method, url, max_retries=max_retries, **kwargs
-                )
+                for attempt in range(max_retries + 1):
+                    wait = _BACKOFF_BASE * (2**attempt)
+                    try:
+                        resp = await client.request(method, url, **kwargs)
+                    except httpx.HTTPError as exc:
+                        # Escalation to a longer window is the retry for timeouts
+                        if isinstance(exc, httpx.TimeoutException) or (
+                            attempt == max_retries
+                        ):
+                            raise
+                        _logger.warning(
+                            "%s fetching %s — retry %d/%d in %.1fs",
+                            type(exc).__name__,
+                            url,
+                            attempt + 1,
+                            max_retries,
+                            wait,
+                        )
+                    else:
+                        if resp.status_code not in _RETRYABLE or attempt == max_retries:
+                            break
+                        _logger.warning(
+                            "HTTP %d from %s — retry %d/%d in %.1fs",
+                            resp.status_code,
+                            url,
+                            attempt + 1,
+                            max_retries,
+                            wait,
+                        )
+                    await asyncio.sleep(wait)
                 if timeout_attempt > 0:
                     _logger.info(
                         "Request to %s succeeded with timeout=%ds (window %d/%d)",
@@ -167,7 +113,6 @@ async def fetch_with_timeout_escalation(
                 return resp
 
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.PoolTimeout) as exc:
-            last_exc = exc
             if timeout_attempt < len(timeout_windows) - 1:
                 next_timeout = timeout_windows[timeout_attempt + 1]
                 _logger.warning(
@@ -187,8 +132,3 @@ async def fetch_with_timeout_escalation(
                     timeout_windows,
                 )
                 raise
-
-    # Should not reach here, but satisfy type checker
-    if last_exc:
-        raise last_exc
-    raise httpx.HTTPError("Timeout escalation exhausted")  # pragma: no cover

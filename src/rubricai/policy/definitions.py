@@ -1,7 +1,6 @@
 import os
 
 POLICY_VERSION = "chml-v0.2"
-EPSS_V5_POLICY_VERSION = "epss-v5"
 
 # Utility types considered "high impact" for lane escalation
 HIGH_UTILITY_TYPES: frozenset[str] = frozenset(
@@ -79,7 +78,6 @@ EPSS_V5_LANE_BASES: dict[str, str] = {
 
 # --- BOD 26-04 policy (CISA, issued 2026-06-10) ---
 # 4 binary signals → 4 remediation bands; signal count drives lane assignment.
-BOD_26_04_POLICY_VERSION = "bod-26-04"
 
 BOD_26_04_LANE_TARGETS: dict[str, int | None] = {
     "critical": 3,  # All 4 signals — 72 hours + forensic triage
