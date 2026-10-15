@@ -2,15 +2,17 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies first (layer cache)
-COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e .
+# Install dependencies first (layer cache). The lock file is used as a constraints
+# file, so runtime packages get the audited, pinned versions while the dev tools
+# listed in it are not installed.
+COPY pyproject.toml requirements-lock.txt ./
+RUN pip install --no-cache-dir -c requirements-lock.txt -e .
 
 # Copy source after dep layer is cached
 COPY src/ ./src/
 
 # Install the package itself
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -c requirements-lock.txt -e .
 
 # Create non-root user and set up directories
 RUN groupadd -r rubricai && useradd -r -g rubricai -d /app rubricai \
