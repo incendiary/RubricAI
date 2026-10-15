@@ -8,6 +8,19 @@ updates:
     groups:
       pip-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Lint tools are pinned in three places (requirements-lock.txt, ci.yml and
+      # .pre-commit-config.yaml). Bump them together by hand, never one at a time.
+      - dependency-name: "black"
+      - dependency-name: "ruff"
+      - dependency-name: "isort"
+      # Major releases change the MCP API surface; migrate deliberately (ROADMAP).
+      - dependency-name: "fastmcp"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "fastmcp-slim"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -17,3 +30,6 @@ updates:
     groups:
       actions-minor-patch:
         update-types: ["minor", "patch"]
+    ignore:
+      # Also pinned in .pre-commit-config.yaml; bump both together by hand.
+      - dependency-name: "trufflesecurity/trufflehog"
