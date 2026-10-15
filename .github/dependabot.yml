@@ -21,6 +21,10 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "mcp"
         update-types: ["version-update:semver-major"]
+      # filelock 4 conflicts with pinned packages (pip ResolutionImpossible); revisit
+      # when virtualenv and py-key-value-aio allow it.
+      - dependency-name: "filelock"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
