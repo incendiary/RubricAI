@@ -1,5 +1,7 @@
 """Tests for the transport wiring in ``src/main.py``."""
 
+import os
+
 import pytest
 
 from main import build_run_kwargs
@@ -71,3 +73,50 @@ def test_sse_cert_and_key_enable_tls(monkeypatch):
         "ssl_certfile": "/c.pem",
         "ssl_keyfile": "/k.pem",
     }
+
+
+def _run_main(monkeypatch, argv, transport=None):
+    """Call main() with mcp.run replaced; return the kwargs it was given."""
+    import main as main_module
+
+    calls = []
+    monkeypatch.setattr(main_module.mcp, "run", lambda **kw: calls.append(kw))
+    monkeypatch.setattr("sys.argv", ["rubricai", *argv])
+    if transport is None:
+        monkeypatch.delenv("RUBRICAI_TRANSPORT", raising=False)
+    else:
+        monkeypatch.setenv("RUBRICAI_TRANSPORT", transport)
+    main_module.main()
+    return calls
+
+
+def test_main_defaults_to_stdio(monkeypatch):
+    assert _run_main(monkeypatch, []) == [{"transport": "stdio"}]
+
+
+def test_main_verbose_sets_debug_log_level(monkeypatch):
+    monkeypatch.setenv("RUBRICAI_LOG_LEVEL", "INFO")
+    _run_main(monkeypatch, ["-v"])
+    assert os.environ["RUBRICAI_LOG_LEVEL"] == "DEBUG"
+
+
+def test_main_without_verbose_leaves_log_level(monkeypatch):
+    monkeypatch.setenv("RUBRICAI_LOG_LEVEL", "WARNING")
+    _run_main(monkeypatch, [])
+    assert os.environ["RUBRICAI_LOG_LEVEL"] == "WARNING"
+
+
+def test_main_sse_passes_security_kwargs_to_run(monkeypatch):
+    monkeypatch.setenv("RUBRICAI_API_KEY", "k" * 16)
+    monkeypatch.delenv("RUBRICAI_TLS_CERT", raising=False)
+    monkeypatch.delenv("RUBRICAI_TLS_KEY", raising=False)
+    (kwargs,) = _run_main(monkeypatch, [], transport="sse")
+    assert kwargs["transport"] == "sse"
+    assert len(kwargs["middleware"]) == 1
+
+
+def test_main_sse_without_key_exits_before_running(monkeypatch):
+    monkeypatch.delenv("RUBRICAI_API_KEY", raising=False)
+    monkeypatch.delenv("RUBRICAI_ALLOW_NO_AUTH", raising=False)
+    with pytest.raises(SystemExit):
+        _run_main(monkeypatch, [], transport="sse")

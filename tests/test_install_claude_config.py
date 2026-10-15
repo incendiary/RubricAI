@@ -101,3 +101,57 @@ def test_main_force_writes_even_when_entry_point_is_missing(tmp_path, monkeypatc
 
     written = json.loads(config_path.read_text(encoding="utf-8"))
     assert written["mcpServers"]["rubricai"]["cwd"] == str(tmp_path.resolve())
+
+
+def _argv(config_path, tmp_path, *extra):
+    return [
+        "install_claude_config.py",
+        "--config",
+        str(config_path),
+        "--cwd",
+        str(tmp_path),
+        *extra,
+    ]
+
+
+def test_dry_run_previews_without_exiting_when_entry_point_is_missing(
+    tmp_path, monkeypatch, capsys
+):
+    module = _load_module()
+    config_path = tmp_path / "claude_desktop_config.json"
+    original = json.dumps({"mcpServers": {}})
+    config_path.write_text(original, encoding="utf-8")
+    monkeypatch.setattr(module.sys, "argv", _argv(config_path, tmp_path))
+    monkeypatch.setattr(module, "_entry_point_exists", lambda project_root: False)
+
+    module.main()  # must not raise SystemExit
+
+    captured = capsys.readouterr()
+    assert "entry point does not exist yet" in captured.err
+    assert "Dry run" in captured.out
+    assert config_path.read_text(encoding="utf-8") == original
+
+
+def test_dry_run_prints_no_note_when_entry_point_exists(tmp_path, monkeypatch, capsys):
+    module = _load_module()
+    config_path = tmp_path / "claude_desktop_config.json"
+    config_path.write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
+    monkeypatch.setattr(module.sys, "argv", _argv(config_path, tmp_path))
+    monkeypatch.setattr(module, "_entry_point_exists", lambda project_root: True)
+
+    module.main()
+
+    assert "entry point does not exist" not in capsys.readouterr().err
+
+
+def test_write_succeeds_when_entry_point_exists(tmp_path, monkeypatch):
+    module = _load_module()
+    config_path = tmp_path / "claude_desktop_config.json"
+    config_path.write_text(json.dumps({"mcpServers": {}}), encoding="utf-8")
+    monkeypatch.setattr(module.sys, "argv", _argv(config_path, tmp_path, "--write"))
+    monkeypatch.setattr(module, "_entry_point_exists", lambda project_root: True)
+
+    module.main()
+
+    written = json.loads(config_path.read_text(encoding="utf-8"))
+    assert written["mcpServers"]["rubricai"]["cwd"] == str(tmp_path.resolve())
