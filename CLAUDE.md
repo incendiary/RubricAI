@@ -2,7 +2,7 @@
 
 ## What this is
 
-RubricAI is a Python MCP server that prioritises CVEs for remediation. It fetches public intelligence (CISA KEV, EPSS, NVD, GitHub Advisory, OSV, public PoC signals) and applies deterministic scoring policies (CHML, EPSS v5, BOD 26-04) in pure Python. The AI client conducts the interview and calls the tools; the server does the scoring. It has no offensive capability. It runs over stdio for local clients, or over SSE for Docker and remote use, where `RUBRICAI_API_KEY` is required.
+RubricAI is a Python MCP server that prioritises CVEs for remediation. It fetches public intelligence (CISA KEV, EPSS, NVD, GitHub Advisory, OSV, public PoC signals) and applies deterministic scoring policies (CHML, EPSS v5, BOD 26-04) in pure Python. The AI client conducts the interview and calls the tools; the server does the scoring. It has no offensive capability. It runs over stdio for local clients, or over SSE or Streamable HTTP for Docker and remote use, where `RUBRICAI_API_KEY` is required.
 
 ## Layout
 
@@ -71,7 +71,7 @@ Lint settings live in `pyproject.toml` (line length 88, Python 3.11 target).
 - No secrets, API keys, tokens, internal hostnames, IP addresses or personal data in code, tests, fixtures, docs or commits. Read credentials from environment variables (see `.env.example`). `.env` is gitignored.
 - Pre-commit runs gitleaks, trufflehog, detect-secrets and the branch guard. CI's Secret Scan job runs gitleaks and trufflehog.
 - Intentional test fixtures that look like secrets get a `# pragma: allowlist secret` comment. Regenerate `.secrets.baseline` deliberately, in its own commit, when that is needed. Never commit it as a side effect of running tests or detect-secrets.
-- SSE refuses to start without `RUBRICAI_API_KEY` unless `RUBRICAI_ALLOW_NO_AUTH=1` is set. `RUBRICAI_TLS_CERT` and `RUBRICAI_TLS_KEY` must be set together. Keep both behaviours.
+- The network transports (`sse`, `http`) refuse to start without `RUBRICAI_API_KEY` unless `RUBRICAI_ALLOW_NO_AUTH=1` is set. `RUBRICAI_TLS_CERT` and `RUBRICAI_TLS_KEY` must be set together. Keep both behaviours.
 - Add new dependencies to `requirements-lock.txt` with exact pins. CI's Audit job runs `pip-audit` against that file.
 - Third-party GitHub Actions stay pinned to full commit SHAs, with the tag in a trailing comment.
 - `black`, `ruff`, `isort` and TruffleHog are pinned in more than one place (lock file, `ci.yml`, `.pre-commit-config.yaml`). Dependabot ignores them; bump all copies together in one PR.
