@@ -6,6 +6,10 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     groups:
+      # fastmcp, fastmcp-slim and mcp must move together (a lone major bump of one
+      # fails pip resolution); first match wins, so this group is listed first.
+      mcp-stack:
+        patterns: ["fastmcp", "fastmcp-slim", "mcp", "mcp-types"]
       pip-minor-patch:
         update-types: ["minor", "patch"]
     ignore:
@@ -14,13 +18,6 @@ updates:
       - dependency-name: "black"
       - dependency-name: "ruff"
       - dependency-name: "isort"
-      # Major releases change the MCP API surface; migrate deliberately (ROADMAP).
-      - dependency-name: "fastmcp"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "fastmcp-slim"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "mcp"
-        update-types: ["version-update:semver-major"]
       # filelock 4 conflicts with pinned packages (pip ResolutionImpossible); revisit
       # when virtualenv and py-key-value-aio allow it.
       - dependency-name: "filelock"

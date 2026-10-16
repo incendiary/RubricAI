@@ -120,3 +120,17 @@ def test_main_sse_without_key_exits_before_running(monkeypatch):
     monkeypatch.delenv("RUBRICAI_ALLOW_NO_AUTH", raising=False)
     with pytest.raises(SystemExit):
         _run_main(monkeypatch, [], transport="sse")
+
+
+@pytest.mark.parametrize("transport", ["sse", "http"])
+def test_every_network_transport_requires_a_key(monkeypatch, transport):
+    with pytest.raises(SystemExit):
+        build_run_kwargs(transport)
+
+
+@pytest.mark.parametrize("transport", ["sse", "http"])
+def test_every_network_transport_gets_the_auth_middleware(monkeypatch, transport):
+    monkeypatch.setenv("RUBRICAI_API_KEY", "k" * 16)
+    kwargs = build_run_kwargs(transport)
+    assert kwargs["transport"] == transport
+    assert kwargs["middleware"][0].cls is APIKeyAuthMiddleware

@@ -176,6 +176,12 @@ Point your MCP client at `http://localhost:8000/sse`. Reports are persisted to `
 > and `FASTMCP_PORT=8000`, and defines a `HEALTHCHECK` against `/health` (plain HTTP:
 > override it if you enable TLS). Outside Docker the default stays loopback-only; set
 > `FASTMCP_HOST` yourself to listen elsewhere.
+>
+> **Transports and sessions:** FastMCP 4 treats SSE as the legacy HTTP transport (kept
+> for compatibility with older clients) and recommends Streamable HTTP. Both are served
+> by RubricAI behind the same API-key check: set `RUBRICAI_TRANSPORT=sse` for `/sse`, or
+> `RUBRICAI_TRANSPORT=http` for `/mcp`. HTTP sessions expire after 30 minutes idle
+> (the MCP SDK default), so long-lived clients reconnect.
 
 ### OpenAI (GPT-4o, o3, Agents SDK)
 
@@ -539,7 +545,7 @@ If a variable appears in `.env` but doesn't seem to be taking effect, check that
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop) or `sse` (Docker/remote) |
+| `RUBRICAI_TRANSPORT` | `stdio` | `stdio` (Claude Desktop), `sse` (legacy HTTP, `/sse`) or `http` (Streamable HTTP, `/mcp`) |
 | `RUBRICAI_REPORT_DIR` | `~/.local/share/rubricai/reports` | Directory for persisted report cards |
 | `RUBRICAI_ENV_DIR` | `~/.local/share/rubricai` | Directory for versioned environment state files |
 | `RUBRICAI_HTTP_TIMEOUT` | `30` | Caps the largest HTTP timeout window (seconds). Requests escalate 5s → 10s → this value (max 30) on timeout, bounding worst-case latency to about 45s plus backoff. Invalid or non-positive values fall back to 30. |
