@@ -72,7 +72,7 @@ pathable==0.6.0
 pathspec==1.1.1
 platformdirs==4.13.0
 pluggy==1.6.0
-pre_commit==4.6.2
+pre_commit==4.7.0
 py-key-value-aio==0.4.6
 pycparser==3.11
 pydantic-settings==2.15.0
