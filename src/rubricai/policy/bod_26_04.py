@@ -158,8 +158,14 @@ def evaluate(
             "vector unavailable. Confirm with the engineer whether exploitation "
             "can be fully automated."
         )
-    elif not auto_bool:
-        rationale.append("Exploitation is not fully automatable.")
+    else:
+        source = (
+            "engineer override"
+            if finding.automatable is not None
+            else "CISA Vulnrichment / CVSS vector"
+        )
+        verdict = "is automatable" if auto_bool else "is not fully automatable"
+        rationale.append(f"Exploitation {verdict} (source: {source}).")
     if not total_impact:
         rationale.append("Technical impact is partial (not total system control).")
 

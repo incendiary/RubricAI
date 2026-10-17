@@ -336,3 +336,19 @@ async def test_no_gh_versions_and_no_refs_leaves_patch_unknown():
     )
     assert r["vendor"]["patch_available"] is None
     assert r["vendor"]["fixed_in"] is None
+
+
+@pytest.mark.asyncio
+async def test_vendor_advisory_refs_are_deduplicated_in_order():
+    refs = [
+        ("https://vendor.example/a", ["Vendor Advisory"]),
+        ("https://vendor.example/b", ["Patch"]),
+        ("https://vendor.example/a", ["Vendor Advisory"]),
+    ]
+    r = await _lookup_with_gh(
+        _GH_NO_SCORE, nvd_record=_nvd_with_refs(*refs), include=_VENDOR
+    )
+    assert r["vendor"]["advisory_refs"] == [
+        "https://vendor.example/a",
+        "https://vendor.example/b",
+    ]

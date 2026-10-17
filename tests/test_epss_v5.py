@@ -254,3 +254,15 @@ class TestVendorPatchEpssV5:
             _make_intel(epss_score=0.9),
         )
         assert result.lane == "critical"
+
+
+class TestEpssDisplayPrecision:
+    def test_score_just_below_one_is_not_displayed_as_1_000(self):
+        result = evaluate(_make_finding(), _make_intel(epss_score=0.99999))
+        text = " ".join(result.rationale)
+        assert "0.99999" in text
+        assert "1.000" not in text
+
+    def test_ordinary_scores_keep_three_decimals(self):
+        result = evaluate(_make_finding(), _make_intel(epss_score=0.85))
+        assert "EPSS score 0.850" in " ".join(result.rationale)

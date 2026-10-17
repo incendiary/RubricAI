@@ -376,3 +376,24 @@ class TestVendorPatchBod2604:
             _make_intel(kev_listed=True, cvss_vector=_TOTAL_VECTOR),
         )
         assert result.lane == "critical"
+
+
+class TestAutomatableIsExplainedInTheRationale:
+    @staticmethod
+    def _text(finding, intel):
+        return " ".join(evaluate(finding, intel).rationale)
+
+    def test_intel_value_is_reported_with_its_source(self):
+        text = self._text(_make_finding(), _make_intel(automatable=True))
+        assert "Exploitation is automatable (source: CISA Vulnrichment" in text
+
+    def test_engineer_override_is_reported_as_the_source(self):
+        text = self._text(
+            _make_finding(automatable=False), _make_intel(automatable=True)
+        )
+        assert "not fully automatable (source: engineer override)" in text
+
+    def test_unknown_value_is_still_an_evidence_gap_not_a_claim(self):
+        result = evaluate(_make_finding(), _make_intel(automatable=None))
+        assert "Exploitation is" not in " ".join(result.rationale)
+        assert any("automatable signal is unknown" in g for g in result.evidence_gaps)
