@@ -101,6 +101,24 @@ Collect only what the engineer uniquely knows and the CVE record does not:
 
 If the engineer provides a component name that matches an entry in the BOM (`env_read` result), pre-fill the version from the BOM and skip that question.
 
+**Step 1b — Check what the environment already records about this CVE**
+
+Using the `env_read` result already in context, search `session_log`, `components`,
+`standing_mitigations` and `context_notes` for the CVE ID and for the component name the
+engineer just gave. If anything matches, say so before scoring and wait for the answer:
+
+> "This environment already has a record for **[CVE]**: [date and summary from the log,
+> for example 'remediated on VPN-GW01 (PA-1410, PAN-OS 11.1.3), finding closed'].
+> Is this the same asset, or a different instance or version?"
+
+- Same asset, still closed: ask whether they want to re-assess anyway; if not, stop and
+  do not create a duplicate finding.
+- Different instance, hardware or version: continue, and use the new details (the recorded
+  ones are history, not the answer).
+- Component or version differs from what is recorded: point it out and ask which is current.
+
+If nothing matches, say nothing and continue.
+
 **Step 2 — Call intel_lookup immediately**
 
 ```
