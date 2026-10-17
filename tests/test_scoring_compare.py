@@ -106,3 +106,22 @@ class TestScoreCompareConsensus:
         assert "chml-v0.2" in result["results"]
         assert "epss-v5" in result["results"]
         assert "bod-26-04" in result["results"]
+
+
+class TestUnevidencedPatchClaim:
+    def test_no_policy_closes_a_claim_without_evidence(self):
+        finding = _base_finding(
+            mitigations=[
+                {
+                    "type": "vendor_patch",
+                    "description": "Upgraded PAN-OS to 11.1.2-h3.",
+                    "causal_claim": "Patch removes the command injection vulnerability.",  # noqa: E501
+                }
+            ]
+        )
+        result = score_compare(finding, _base_intel())
+        assert all(row["basis"] != "vendor_patch_applied" for row in result["summary"])
+        for assessment in result["results"].values():
+            assert any(
+                "no evidence reference" in g for g in assessment["evidence_gaps"]
+            )

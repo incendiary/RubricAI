@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+import pytest
+
 from rubricai.fetchers.nvd import extract_automatable, extract_technical_impact
 from rubricai.policy.bod_26_04 import evaluate
 from rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
@@ -397,3 +399,28 @@ class TestAutomatableIsExplainedInTheRationale:
         result = evaluate(_make_finding(), _make_intel(automatable=None))
         assert "Exploitation is" not in " ".join(result.rationale)
         assert any("automatable signal is unknown" in g for g in result.evidence_gaps)
+
+
+class TestVendorPatchNeedsEvidence:
+    @staticmethod
+    def _evaluate(evidence):
+        patch = {
+            "type": "vendor_patch",
+            "description": "Upgraded to the patched release.",
+            "causal_claim": "Patch removes the vulnerable code path.",
+        }
+        if evidence is not None:
+            patch["evidence"] = evidence
+        return evaluate(
+            _make_finding(mitigations=[patch]),
+            _make_intel(kev_listed=True, automatable=True, cvss_vector=_TOTAL_VECTOR),
+        )
+
+    @pytest.mark.parametrize("evidence", [None, [], [""]])
+    def test_claim_without_evidence_does_not_close_the_finding(self, evidence):
+        result = self._evaluate(evidence)
+        assert result.lane == "critical"
+        assert any("no evidence reference" in g for g in result.evidence_gaps)
+
+    def test_claim_with_evidence_closes_it(self):
+        assert self._evaluate(["CHG-1"]).lane == "low"

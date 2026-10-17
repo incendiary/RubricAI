@@ -266,3 +266,25 @@ class TestEpssDisplayPrecision:
     def test_ordinary_scores_keep_three_decimals(self):
         result = evaluate(_make_finding(), _make_intel(epss_score=0.85))
         assert "EPSS score 0.850" in " ".join(result.rationale)
+
+
+class TestVendorPatchNeedsEvidence:
+    @staticmethod
+    def _evaluate(evidence):
+        patch = {
+            "type": "vendor_patch",
+            "description": "Upgraded to the patched release.",
+            "causal_claim": "Patch removes the vulnerable code path.",
+        }
+        if evidence is not None:
+            patch["evidence"] = evidence
+        return evaluate(_make_finding(mitigations=[patch]), _make_intel(epss_score=0.9))
+
+    @pytest.mark.parametrize("evidence", [None, [], [""]])
+    def test_claim_without_evidence_does_not_close_the_finding(self, evidence):
+        result = self._evaluate(evidence)
+        assert result.lane == "critical"
+        assert any("no evidence reference" in g for g in result.evidence_gaps)
+
+    def test_claim_with_evidence_closes_it(self):
+        assert self._evaluate(["CHG-1"]).lane == "low"

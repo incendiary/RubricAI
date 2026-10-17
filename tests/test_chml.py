@@ -2,6 +2,8 @@
 
 from datetime import UTC, datetime
 
+import pytest
+
 from rubricai.policy.chml import _is_high_utility, _mitigation_effect, evaluate
 from rubricai.policy.definitions import (
     POLICY_VERSION,
@@ -328,3 +330,33 @@ class TestVendorPatch:
             _make_intel(kev_listed=True),
         )
         assert result.lane == "critical"
+
+
+class TestVendorPatchNeedsEvidence:
+    @staticmethod
+    def _evaluate(evidence):
+        patch = {
+            "type": "vendor_patch",
+            "description": "Upgraded to the patched release.",
+            "causal_claim": "Patch removes the vulnerable code path.",
+        }
+        if evidence is not None:
+            patch["evidence"] = evidence
+        return evaluate(
+            _make_finding(
+                reachability="internet_exposed", utility=["rce"], mitigations=[patch]
+            ),
+            _make_intel(kev_listed=True),
+        )
+
+    @pytest.mark.parametrize("evidence", [None, [], [""], ["  "]])
+    def test_claim_without_evidence_does_not_close_a_kev_finding(self, evidence):
+        result = self._evaluate(evidence)
+        assert result.lane == "critical"
+        assert result.target.basis != "vendor_patch_applied"
+        assert any("no evidence reference" in g for g in result.evidence_gaps)
+
+    def test_claim_with_evidence_closes_it_without_a_gap(self):
+        result = self._evaluate(["CHG-1"])
+        assert result.lane == "low"
+        assert result.evidence_gaps == []
