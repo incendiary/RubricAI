@@ -337,7 +337,9 @@ async def fetch_cvss(cve_id: str) -> dict | None:
     ]:
         entries = metrics.get(key, [])
         if entries:
-            data = entries[0].get("cvssData", {})
+            # NIST's "Primary" assessment first, then CNA "Secondary" entries
+            primary = next((e for e in entries if e.get("type") == "Primary"), None)
+            data = (primary or entries[0]).get("cvssData", {})
             return {
                 "base": data.get("baseScore"),
                 "vector": data.get("vectorString"),
