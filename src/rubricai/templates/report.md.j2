@@ -26,6 +26,9 @@
 | Field | Value |
 |-------|-------|
 | Name | {{ finding.component.name }} |
+{% if finding.component.vendor %}
+| Vendor | {{ finding.component.vendor }} |
+{% endif %}
 | Version | {{ finding.component.version or "—" }} |
 | Type | {{ finding.component.type }} |
 | Entry point | {{ finding.entry_point.description }} |

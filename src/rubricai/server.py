@@ -100,6 +100,17 @@ def score_evaluate(
 ) -> dict[str, Any]:
     """Apply a scoring policy to produce a lane, target, and rationale.
 
+    Example finding (the smallest valid shape)::
+
+        {"id": "FIND-001", "cve_or_id": "CVE-2024-3400",
+         "component": {"name": "PAN-OS", "vendor": "Palo Alto Networks",
+                       "version": "11.1.0", "type": "appliance"},
+         "entry_point": {"description": "GlobalProtect portal"},
+         "reachability": "internet_exposed", "attacker_utility": ["rce"]}
+
+    From intel_lookup's ``derived_finding_context`` copy only ``attacker_utility``,
+    ``entry_point`` and ``preconditions``; its other keys are not finding fields.
+
     Args:
         finding: Finding object (engineer-provided context).
         intel: IntelResult object (output of intel_lookup).
@@ -119,6 +130,17 @@ def score_compare(
     Use this when the engineer asks which policy to adopt, or wants to see how
     different regulatory frameworks (CHML, EPSS v5, BOD 26-04) would prioritise
     the same finding. Prefer this over calling score_evaluate three times.
+
+    Example finding (the smallest valid shape)::
+
+        {"id": "FIND-001", "cve_or_id": "CVE-2024-3400",
+         "component": {"name": "PAN-OS", "vendor": "Palo Alto Networks",
+                       "version": "11.1.0", "type": "appliance"},
+         "entry_point": {"description": "GlobalProtect portal"},
+         "reachability": "internet_exposed", "attacker_utility": ["rce"]}
+
+    From intel_lookup's ``derived_finding_context`` copy only ``attacker_utility``,
+    ``entry_point`` and ``preconditions``; its other keys are not finding fields.
 
     Args:
         finding: Finding object (engineer-provided context).
