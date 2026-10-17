@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AttackerUtilityType = Literal[
     "rce",
@@ -101,6 +101,8 @@ class Finding(BaseModel):
     cve_or_id: str
     title: str | None = None
     component: Component
+    # Name of the saved environment (as listed by env_list) this finding belongs to.
+    environment_name: str | None = None
     environment: Environment | None = None
     entry_point: EntryPoint
     reachability: Literal[
@@ -114,3 +116,13 @@ class Finding(BaseModel):
     # Engineer-provided override for BOD 26-04 automatable signal.
     # When set, takes precedence over Vulnrichment / CVSS-derived value.
     automatable: bool | None = None
+
+    @field_validator("environment_name")
+    @classmethod
+    def _normalise_environment_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        # Imported here: tools.environment imports the schemas package.
+        from ..tools.environment import _validate_env_name
+
+        return _validate_env_name(value)

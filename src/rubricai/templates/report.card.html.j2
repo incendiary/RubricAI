@@ -189,6 +189,7 @@
     {{ finding.component.version or "" }}
     · {{ finding.component.type }}
     · {{ finding.entry_point.description }}
+    {% if finding.environment_name %} · env: {{ finding.environment_name }}{% endif %}
     {% if finding.environment and finding.environment.stage %} · {{ finding.environment.stage }}{% endif %}
     {% for u in finding.attacker_utility %}<span class="pill">{{ u }}</span>{% endfor %}
   </div>
