@@ -187,7 +187,8 @@ _NVD_LOG4SHELL = {
 }
 
 
-async def _lookup_with_gh(gh_record):
+async def _lookup_with_gh(gh_record, nvd_record=_NVD_LOG4SHELL, nvd_cvss=None):
+    nvd_cvss = nvd_cvss or {"base": 9.8, "vector": "CVSS:3.1/NVD", "version": "3.1"}
     with (
         patch(
             "rubricai.tools.intel.gh_advisory_fetcher.fetch",
@@ -195,13 +196,11 @@ async def _lookup_with_gh(gh_record):
         ),
         patch(
             "rubricai.tools.intel.nvd_fetcher.fetch",
-            new=AsyncMock(return_value=_NVD_LOG4SHELL),
+            new=AsyncMock(return_value=nvd_record),
         ),
         patch(
             "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(
-                return_value={"base": 9.8, "vector": "CVSS:3.1/NVD", "version": "3.1"}
-            ),
+            new=AsyncMock(return_value=nvd_cvss if nvd_record else None),
         ),
         patch(
             "rubricai.tools.intel.poc_fetcher.fetch",
@@ -222,12 +221,63 @@ async def _lookup_with_gh(gh_record):
 async def test_lookup_falls_back_to_nvd_cvss_when_github_unscored():
     r = await _lookup_with_gh(_GH_NO_SCORE)
     assert r["cvss"]["base"] == 9.8
+    assert r["cvss"]["source"] == "nvd"
     assert "GITHUB_ADVISORY" in r["sources"]
 
 
 @pytest.mark.asyncio
 async def test_lookup_prefers_nvd_description_over_github_title():
     r = await _lookup_with_gh(_GH_SCORED)
-    assert r["cvss"]["base"] == 10.0
     assert r["description"].startswith("JNDI features")
     assert "rce" in r["derived_finding_context"]["attacker_utility"]
+
+
+# CVE-2024-3400 (OPEN-18): NVD says 10.0 / Scope Changed, GitHub says 9.8 / Scope
+# Unchanged. NVD is authoritative; GitHub is only a fallback.
+_NVD_10 = {
+    "base": 10.0,
+    "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H",
+    "version": "3.1",
+}
+_GH_98 = {
+    "description": "PAN-OS command injection",
+    "cvss_base": 9.8,
+    "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+    "cvss_version": "3.1",
+}
+
+
+@pytest.mark.asyncio
+async def test_nvd_cvss_wins_when_sources_disagree(caplog):
+    with caplog.at_level("WARNING", logger="rubricai.tools.intel"):
+        r = await _lookup_with_gh(_GH_98, nvd_cvss=_NVD_10)
+    assert r["cvss"]["base"] == 10.0
+    assert "S:C" in r["cvss"]["vector"]
+    assert r["cvss"]["source"] == "nvd"
+    assert any("differs between sources" in m for m in caplog.messages)
+
+
+@pytest.mark.asyncio
+async def test_github_cvss_used_only_when_nvd_has_no_record():
+    r = await _lookup_with_gh(_GH_98, nvd_record=None)
+    assert r["cvss"]["base"] == 9.8
+    assert r["cvss"]["source"] == "github"
+    assert "NVD" not in r["sources"]
+
+
+@pytest.mark.asyncio
+async def test_agreeing_sources_do_not_warn(caplog):
+    same = {**_NVD_10, "base": 9.8}
+    with caplog.at_level("WARNING", logger="rubricai.tools.intel"):
+        r = await _lookup_with_gh(_GH_98, nvd_cvss=same)
+    assert r["cvss"]["source"] == "nvd"
+    assert not any("differs between sources" in m for m in caplog.messages)
+
+
+@pytest.mark.asyncio
+async def test_unscored_nvd_entry_falls_back_to_github():
+    r = await _lookup_with_gh(
+        _GH_98, nvd_cvss={"base": None, "vector": None, "version": "3.1"}
+    )
+    assert r["cvss"]["base"] == 9.8
+    assert r["cvss"]["source"] == "github"

@@ -1,6 +1,7 @@
 """intel.lookup MCP tool — fetches public intel signals for a list of CVEs."""
 
 import asyncio
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,6 +19,8 @@ from ..schemas.intel import (
     PocInfo,
     VendorInfo,
 )
+
+_logger = logging.getLogger(__name__)
 
 _ALL_SOURCES = {"kev", "epss", "cvss", "poc", "vendor"}
 
@@ -73,23 +76,34 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     gh_advisory_record = raw.get("gh_advisory")
     nvd_record = raw.get("nvd")
 
-    # CVSS: use GitHub's only when it carries both score and vector, else NVD
+    # CVSS: NVD's assessment is authoritative (NIST Primary, then CNA); GitHub's is
+    # used only when NVD has none, and only if it carries both score and vector.
     cvss = None
     if "cvss" in sources:
-        cvss_raw = None
+        nvd_cvss = await nvd_fetcher.fetch_cvss(cve_id) if nvd_record else None
+        if nvd_cvss and nvd_cvss.get("base") is None:
+            nvd_cvss = None  # unscored NVD entry: fall back to GitHub
+        gh_cvss = None
         if gh_advisory_record and (
             gh_advisory_record.get("cvss_base")
             and gh_advisory_record.get("cvss_vector")
         ):
-            cvss_raw = {
+            gh_cvss = {
                 "base": gh_advisory_record["cvss_base"],
                 "vector": gh_advisory_record["cvss_vector"],
                 "version": gh_advisory_record.get("cvss_version") or "unknown",
             }
-        elif nvd_record:
-            cvss_raw = await nvd_fetcher.fetch_cvss(cve_id)
-        if cvss_raw:
-            cvss = CvssInfo.model_validate(cvss_raw)
+        if nvd_cvss and gh_cvss and nvd_cvss["base"] != gh_cvss["base"]:
+            _logger.warning(
+                "%s: CVSS differs between sources (NVD %s, GitHub %s); using NVD",
+                cve_id,
+                nvd_cvss["base"],
+                gh_cvss["base"],
+            )
+        if nvd_cvss:
+            cvss = CvssInfo.model_validate({**nvd_cvss, "source": "nvd"})
+        elif gh_cvss:
+            cvss = CvssInfo.model_validate({**gh_cvss, "source": "github"})
 
     # PoC (uses cached NVD record — no extra HTTP call)
     poc = None
