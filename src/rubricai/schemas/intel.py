@@ -41,7 +41,10 @@ class PocInfo(BaseModel):
 class VendorInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # True when a fix is known to exist; None when unknown. Never False: the
+    # absence of evidence in public data does not prove that no patch exists.
     patch_available: bool | None = None
+    fixed_in: str | None = None
     advisory_refs: list[str] = Field(default_factory=list)
 
 

@@ -113,8 +113,8 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
 
     # Vendor (advisory links from NVD references)
     vendor = None
-    if "vendor" in sources and nvd_record:
-        vendor = _extract_vendor(nvd_record)
+    if "vendor" in sources and (nvd_record or gh_advisory_record):
+        vendor = _extract_vendor(nvd_record or {}, gh_advisory_record or {})
 
     active_sources: list[str] = []
     if kev_raw:
@@ -159,7 +159,7 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     )
 
 
-def _extract_vendor(nvd_record: dict) -> VendorInfo:
+def _extract_vendor(nvd_record: dict, gh_record: dict) -> VendorInfo:
     refs = nvd_record.get("references", [])
     advisory_refs = [
         r["url"]
@@ -169,4 +169,12 @@ def _extract_vendor(nvd_record: dict) -> VendorInfo:
             for tag in ("Vendor Advisory", "Patch", "Mitigation")
         )
     ]
-    return VendorInfo(advisory_refs=advisory_refs)
+    # A fixed version published by GitHub (package advisories) or an NVD reference
+    # tagged "Patch" shows a fix exists. Anything else stays unknown (None).
+    patched = gh_record.get("patched_versions") or []
+    has_patch_ref = any("Patch" in r.get("tags", []) for r in refs)
+    return VendorInfo(
+        patch_available=True if (patched or has_patch_ref) else None,
+        fixed_in=", ".join(patched[:5]) or None,
+        advisory_refs=advisory_refs,
+    )

@@ -187,7 +187,9 @@ _NVD_LOG4SHELL = {
 }
 
 
-async def _lookup_with_gh(gh_record, nvd_record=_NVD_LOG4SHELL, nvd_cvss=None):
+async def _lookup_with_gh(
+    gh_record, nvd_record=_NVD_LOG4SHELL, nvd_cvss=None, include=("cvss", "poc")
+):
     nvd_cvss = nvd_cvss or {"base": 9.8, "vector": "CVSS:3.1/NVD", "version": "3.1"}
     with (
         patch(
@@ -213,7 +215,7 @@ async def _lookup_with_gh(gh_record, nvd_record=_NVD_LOG4SHELL, nvd_cvss=None):
             ),
         ),
     ):
-        result = await lookup(["CVE-2021-44228"], include=["cvss", "poc"])
+        result = await lookup(["CVE-2021-44228"], include=list(include))
     return result["results"][0]
 
 
@@ -281,3 +283,56 @@ async def test_unscored_nvd_entry_falls_back_to_github():
     )
     assert r["cvss"]["base"] == 9.8
     assert r["cvss"]["source"] == "github"
+
+
+# OPEN-19: vendor patch status
+_VENDOR = ("vendor",)
+
+
+def _nvd_with_refs(*refs):
+    return {**_NVD_LOG4SHELL, "references": [{"url": u, "tags": t} for u, t in refs]}
+
+
+@pytest.mark.asyncio
+async def test_github_fixed_version_sets_patch_available_and_fixed_in():
+    gh = {**_GH_SCORED, "patched_versions": ["2.15.0", "2.12.2"]}
+    r = await _lookup_with_gh(gh, include=_VENDOR)
+    assert r["vendor"]["patch_available"] is True
+    assert r["vendor"]["fixed_in"] == "2.15.0, 2.12.2"
+
+
+@pytest.mark.asyncio
+async def test_vendor_is_reported_from_github_alone_when_nvd_is_down():
+    gh = {**_GH_SCORED, "patched_versions": ["2.15.0"]}
+    r = await _lookup_with_gh(gh, nvd_record=None, include=_VENDOR)
+    assert r["vendor"] == {
+        "patch_available": True,
+        "fixed_in": "2.15.0",
+        "advisory_refs": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_nvd_patch_reference_sets_patch_available_without_a_version():
+    nvd = _nvd_with_refs(("https://vendor.example/fix", ["Patch", "Vendor Advisory"]))
+    r = await _lookup_with_gh(_GH_NO_SCORE, nvd_record=nvd, include=_VENDOR)
+    assert r["vendor"]["patch_available"] is True
+    assert r["vendor"]["fixed_in"] is None
+    assert r["vendor"]["advisory_refs"] == ["https://vendor.example/fix"]
+
+
+@pytest.mark.asyncio
+async def test_advisory_alone_does_not_claim_a_patch_and_absence_is_not_false():
+    nvd = _nvd_with_refs(("https://vendor.example/advisory", ["Vendor Advisory"]))
+    r = await _lookup_with_gh(_GH_NO_SCORE, nvd_record=nvd, include=_VENDOR)
+    assert r["vendor"]["patch_available"] is None
+    assert r["vendor"]["advisory_refs"] == ["https://vendor.example/advisory"]
+
+
+@pytest.mark.asyncio
+async def test_no_gh_versions_and_no_refs_leaves_patch_unknown():
+    r = await _lookup_with_gh(
+        _GH_NO_SCORE, nvd_record=_nvd_with_refs(), include=_VENDOR
+    )
+    assert r["vendor"]["patch_available"] is None
+    assert r["vendor"]["fixed_in"] is None
