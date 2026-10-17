@@ -121,3 +121,12 @@ def test_vendor_appears_in_the_generated_report():
     assessment = score_evaluate(finding, _INTEL)
     result = report_generate(finding, _INTEL, assessment, formats=["markdown"])
     assert "| Vendor | Palo Alto Networks |" in result["report_markdown"]
+
+
+def test_report_shows_the_fixed_version():
+    from rubricai.tools.report import report_generate
+
+    intel = {**_INTEL, "vendor": {"patch_available": True, "fixed_in": "2.15.0"}}
+    assessment = score_evaluate(_FINDING, intel)
+    result = report_generate(_FINDING, intel, assessment, formats=["markdown"])
+    assert "| Vendor patch | Available (fixed in 2.15.0) |" in result["report_markdown"]

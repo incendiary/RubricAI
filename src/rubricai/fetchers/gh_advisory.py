@@ -133,10 +133,17 @@ def _normalize_advisory(advisory: dict) -> dict:
 
     description = (advisory.get("summary") or advisory.get("description") or "")[:300]
 
+    patched_versions: list[str] = []
+    for vuln in advisory.get("vulnerabilities") or []:
+        version = vuln.get("first_patched_version")
+        if version and version not in patched_versions:
+            patched_versions.append(version)
+
     return {
         "id": cve_id,
         "description": description,
         "cvss_base": cvss_base,
         "cvss_vector": cvss_vector,
         "cvss_version": cvss_version,
+        "patched_versions": patched_versions,
     }

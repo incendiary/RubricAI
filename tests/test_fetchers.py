@@ -837,7 +837,14 @@ def test_gh_advisory_normalises_log4shell_payload():
     assert rec["cvss_base"] == 10
     assert rec["cvss_vector"].startswith("CVSS:3.1/AV:N")
     assert rec["cvss_version"] == "3.1"
-    assert set(rec) == {"id", "description", "cvss_base", "cvss_vector", "cvss_version"}
+    assert set(rec) == {
+        "id",
+        "description",
+        "cvss_base",
+        "cvss_vector",
+        "cvss_version",
+        "patched_versions",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -938,3 +945,18 @@ async def test_fetch_cvss_falls_back_to_first_entry_without_primary():
     with patch.object(nvd_fetcher, "fetch", new=AsyncMock(return_value=record)):
         cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3400")
     assert cvss["base"] == 9.1
+
+
+def test_gh_normaliser_collects_unique_patched_versions_from_real_payload():
+    import json
+    from pathlib import Path
+
+    from rubricai.fetchers.gh_advisory import _normalize_advisory
+
+    payload = json.loads(
+        (Path(__file__).parent / "fixtures" / "ghsa_log4shell.json").read_text()
+    )
+    patched = _normalize_advisory(payload[0])["patched_versions"]
+    assert patched[0] == "2.15.0"
+    assert len(patched) == len(set(patched)) > 1
+    assert None not in patched

@@ -66,7 +66,7 @@
 | PoC / exploit | No data |
 {% endif %}
 {% if intel.vendor %}
-| Vendor patch | {% if intel.vendor.patch_available %}Available{% elif intel.vendor.patch_available == false %}Not available{% else %}Unknown{% endif %} |
+| Vendor patch | {% if intel.vendor.patch_available %}Available{% if intel.vendor.fixed_in %} (fixed in {{ intel.vendor.fixed_in }}){% endif %}{% elif intel.vendor.patch_available == false %}Not available{% else %}Unknown{% endif %} |
 {% endif %}
 
 ---
