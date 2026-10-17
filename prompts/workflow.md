@@ -104,8 +104,14 @@ If the engineer provides a component name that matches an entry in the BOM (`env
 **Step 1b — Check what the environment already records about this CVE**
 
 Using the `env_read` result already in context, search `session_log`, `components`,
-`standing_mitigations` and `context_notes` for the CVE ID and for the component name the
-engineer just gave. If anything matches, say so before scoring and wait for the answer:
+`standing_mitigations` and `context_notes`. What counts as a match:
+
+- **The CVE ID** appearing anywhere in those records: always a match.
+- **The component** only when both its name and its version equal a recorded entry, or the
+  same entry also mentions the CVE. A bare generic name (Ubuntu, PostgreSQL, nginx) is not
+  a match on its own.
+
+If something matches, say so before scoring and wait for the answer:
 
 > "This environment already has a record for **[CVE]**: [date and summary from the log,
 > for example 'remediated on VPN-GW01 (PA-1410, PAN-OS 11.1.3), finding closed'].
@@ -118,6 +124,12 @@ engineer just gave. If anything matches, say so before scoring and wait for the 
 - Component or version differs from what is recorded: point it out and ask which is current.
 
 If nothing matches, say nothing and continue.
+
+**Unattended runs.** If the engineer has said the run is unattended, or has supplied all the
+inputs and told you not to ask questions, do not wait. Proceed with the inputs they stated
+and put the conflict in the first line of your final summary
+(for example "Note: this environment records CVE-X as closed on [date]; scored on the
+stated inputs").
 
 **Step 2 — Call intel_lookup immediately**
 
@@ -197,6 +209,10 @@ For each mitigation, ask:
 
 5. env_write(state=<updated_state>, environment_name=<active_environment>)
    → save updated environment state for next session
+   → `env_write` replaces the whole saved state with the dict you pass (older versions are
+     kept as files). Build it from an `env_read` made just before writing and append to
+     `session_log` rather than rebuilding it; state built from an old read silently drops
+     entries another session wrote in between
    → include a session_log entry: {timestamp, summary of what was assessed, new context learned}
 ```
 
@@ -300,6 +316,53 @@ Network appliances (firewalls, VPNs, load balancers) → use `"appliance"`. Do *
 ```
 
 Do **not** add `name`, `production`, `reachability`, `data_impact`, or any other field here.
+
+### `entry_point` sub-object
+
+| Field | Type | Notes |
+|---|---|---|
+| `description` | `str` | Required. How the exploit is reached, in plain words |
+| `protocol` | `str \| null` | Optional (for example `"https"`) |
+| `port` | `int \| null` | Optional, 1 to 65535 |
+| `route` | `str \| null` | Optional path or endpoint |
+
+### `preconditions` sub-object
+
+| Field | Type | Notes |
+|---|---|---|
+| `auth_required` | `bool` | Default `false` |
+| `user_interaction` | `bool` | Default `false` |
+| `privileges_required` | `str` | `"none"`, `"low"`, `"high"` or `"unknown"` (default) |
+| `attack_complexity` | `str` | `"low"`, `"high"` or `"unknown"` (default) |
+
+### `data_impact` sub-object
+
+| Field | Type | Notes |
+|---|---|---|
+| `sensitive_access` | `bool` | Default `false` |
+| `notes` | `str \| null` | Optional |
+
+### `mitigations[]` items
+
+| Field | Type | Notes |
+|---|---|---|
+| `type` | `str` | Required. One of `"waf_rule"`, `"acl_segmentation"`, `"disable_feature"`, `"vendor_workaround"`, `"vendor_patch"`, `"virtual_patching"`, `"increased_monitoring"`, `"rate_limiting"`, `"other"` |
+| `description` | `str` | Required |
+| `evidence` | `list[str]` | References that back the claim (ticket, change, link). Default empty |
+| `causal_claim` | `str \| null` | Why this blocks the exploit path |
+
+A `vendor_patch` mitigation that has a `causal_claim` marks the finding remediated: every
+policy returns lane `low` with no SLA. Add it only when the engineer confirms the patch is
+applied, and always include `evidence` references. (The scoring code does not yet insist on
+evidence; this is tracked as OPEN-23 in the roadmap, so the discipline is yours for now.)
+
+### `evidence_pointers[]` items
+
+| Field | Type | Notes |
+|---|---|---|
+| `type` | `str` | Required. One of `"ticket"`, `"change"`, `"screenshot"`, `"config_excerpt"`, `"log_excerpt"`, `"document"`, `"link"`, `"other"` |
+| `ref` | `str` | Required. The ticket number, URL or file reference |
+| `notes` | `str \| null` | Optional |
 
 ### `reachability` — top-level on Finding, not nested
 

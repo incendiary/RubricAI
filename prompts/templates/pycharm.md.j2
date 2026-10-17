@@ -47,6 +47,7 @@ RubricAI exposes **11 MCP tools** — auto-discovered by Claude Code via the MCP
 | `project_scan` | Scan the open project directory and return a BOM + environment summary. |
 | `intel_lookup` | Fetch public intel signals (KEV, EPSS, CVSS, PoC, vendor) for one or more CVEs. |
 | `score_evaluate` | Apply a scoring policy to produce a lane, target, and rationale. |
+| `score_compare` | Score one finding under every registered policy (CHML, EPSS v5, BOD 26-04) and return a side-by-side comparison. |
 | `report_generate` | Generate a standardised report card (markdown + JSON + optional PDF). |
 | `env_list` | List all named environments stored on disk. Call at session start. |
 | `env_read` | Read the current state for a named environment. |
