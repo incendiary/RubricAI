@@ -351,10 +351,11 @@ Do **not** add `name`, `production`, `reachability`, `data_impact`, or any other
 | `evidence` | `list[str]` | References that back the claim (ticket, change, link). Default empty |
 | `causal_claim` | `str \| null` | Why this blocks the exploit path |
 
-A `vendor_patch` mitigation that has a `causal_claim` marks the finding remediated: every
-policy returns lane `low` with no SLA. Add it only when the engineer confirms the patch is
-applied, and always include `evidence` references. (The scoring code does not yet insist on
-evidence; this is tracked as OPEN-23 in the roadmap, so the discipline is yours for now.)
+A `vendor_patch` mitigation that has a `causal_claim` **and at least one `evidence`
+reference** marks the finding remediated: every policy returns lane `low` with no SLA. A
+claim without evidence does not close the finding; it is scored on its merits and the
+report carries an evidence gap asking for a ticket or link. Add a `vendor_patch` only when
+the engineer confirms the patch is applied, and ask for the change ticket or link.
 
 ### `evidence_pointers[]` items
 
@@ -393,4 +394,4 @@ When the engineer confirms a vendor patch has been applied:
 }
 ```
 
-A `vendor_patch` mitigation with a `causal_claim` causes all policies to short-circuit to `lane="low"` with `priority_score=0.0` — confirming full remediation. A `vendor_patch` without a `causal_claim` does **not** trigger the short-circuit and is treated as a strong (but not resolving) compensating control.
+A `vendor_patch` mitigation with a `causal_claim` **and at least one `evidence` reference** causes all policies to short-circuit to `lane="low"` with `priority_score=0.0` — confirming full remediation. A `vendor_patch` without a `causal_claim`, or without evidence, does **not** trigger the short-circuit: it is treated as a strong (but not resolving) compensating control, and a claim without evidence adds an evidence gap asking for a ticket or link.

@@ -23,13 +23,35 @@ STRONG_MITIGATION_TYPES: frozenset[str] = frozenset(
 )
 
 
+def _evidenced(mitigation) -> bool:
+    return any(ref.strip() for ref in mitigation.evidence)
+
+
 def is_patched_and_verified(mitigations: list) -> bool:
-    """Return True if a vendor_patch mitigation with a causal_claim exists.
+    """Return True if a vendor_patch mitigation has a causal_claim AND evidence.
 
     When True, all policies short-circuit to lane='low' with a Remediated rationale
-    rather than running the normal signal-based lane decision tree.
+    rather than running the normal signal-based lane decision tree. A claim with no
+    evidence reference (ticket, change, link) does not close a finding.
     """
-    return any(m.type == "vendor_patch" and bool(m.causal_claim) for m in mitigations)
+    return any(
+        m.type == "vendor_patch" and bool(m.causal_claim) and _evidenced(m)
+        for m in mitigations
+    )
+
+
+def unevidenced_patch_gap(mitigations: list) -> str | None:
+    """Evidence-gap text when a patch is claimed but cannot close the finding."""
+    claimed = any(
+        m.type == "vendor_patch" and bool(m.causal_claim) for m in mitigations
+    )
+    if claimed and not is_patched_and_verified(mitigations):
+        return (
+            "A vendor_patch is claimed but has no evidence reference, so the finding "
+            "is not closed. Attach a change ticket or link to the evidence field "
+            "to confirm the patch is applied."
+        )
+    return None
 
 
 # Default remediation targets (days). None means "patch train" — no fixed SLA.

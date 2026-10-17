@@ -29,6 +29,7 @@ from .definitions import (
     BOD_26_04_LANE_TARGETS,
     STRONG_MITIGATION_TYPES,
     is_patched_and_verified,
+    unevidenced_patch_gap,
 )
 
 
@@ -195,6 +196,10 @@ def evaluate(
         evidence_gaps.append(
             "No mitigations documented — patch or apply compensating controls immediately."
         )
+
+    patch_gap = unevidenced_patch_gap(finding.mitigations)
+    if patch_gap:
+        evidence_gaps.append(patch_gap)
 
     priority_score, priority_breakdown = compute_priority_score(finding, intel)
 

@@ -10,6 +10,7 @@ from .definitions import (
     STRONG_MITIGATION_TYPES,
     get_lane_targets,
     is_patched_and_verified,
+    unevidenced_patch_gap,
 )
 
 
@@ -169,6 +170,10 @@ def evaluate(
         evidence_gaps.append(
             "KEV-listed CVE with no strong mitigations — patch is the only safe resolution."
         )
+
+    patch_gap = unevidenced_patch_gap(finding.mitigations)
+    if patch_gap:
+        evidence_gaps.append(patch_gap)
 
     priority_score, priority_breakdown = compute_priority_score(finding, intel)
 
