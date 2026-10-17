@@ -161,14 +161,16 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
 
 def _extract_vendor(nvd_record: dict, gh_record: dict) -> VendorInfo:
     refs = nvd_record.get("references", [])
-    advisory_refs = [
-        r["url"]
-        for r in refs
-        if any(
-            tag in r.get("tags", [])
-            for tag in ("Vendor Advisory", "Patch", "Mitigation")
+    advisory_refs = list(
+        dict.fromkeys(  # NVD repeats URLs; keep first occurrences
+            r["url"]
+            for r in refs
+            if any(
+                tag in r.get("tags", [])
+                for tag in ("Vendor Advisory", "Patch", "Mitigation")
+            )
         )
-    ]
+    )
     # A fixed version published by GitHub (package advisories) or an NVD reference
     # tagged "Patch" shows a fix exists. Anything else stays unknown (None).
     patched = gh_record.get("patched_versions") or []

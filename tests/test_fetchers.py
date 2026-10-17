@@ -960,3 +960,19 @@ def test_gh_normaliser_collects_unique_patched_versions_from_real_payload():
     assert patched[0] == "2.15.0"
     assert len(patched) == len(set(patched)) > 1
     assert None not in patched
+
+
+def test_poc_references_are_deduplicated_before_the_cap():
+    refs = [
+        "https://example.test/poc-a",
+        "https://example.test/poc-a",
+        "https://example.test/poc-b",
+        "https://example.test/poc-c",
+        "https://example.test/poc-d",
+    ]
+    result = _classify(refs)
+    assert result["references"] == [
+        "https://example.test/poc-a",
+        "https://example.test/poc-b",
+        "https://example.test/poc-c",
+    ]

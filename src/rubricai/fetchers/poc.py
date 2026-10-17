@@ -20,6 +20,7 @@ _MEDIUM_CONFIDENCE_PATTERNS = (
 
 
 def _classify(refs: list[str]) -> dict:
+    refs = list(dict.fromkeys(refs))  # NVD repeats URLs; keep first occurrences
     high_matches = [r for r in refs if any(d in r for d in _HIGH_CONFIDENCE_DOMAINS)]
     if high_matches:
         return {"available": True, "confidence": "high", "references": high_matches}
