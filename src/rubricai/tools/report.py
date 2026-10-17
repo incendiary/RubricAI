@@ -14,6 +14,7 @@ from ..schemas.assessment import Assessment
 from ..schemas.evidence import EvidenceItem
 from ..schemas.finding import Finding
 from ..schemas.intel import IntelResult
+from ..validation import validate_model
 
 _TEMPLATE_DIR = Path(__file__).parent.parent / "templates"
 _DEFAULT_REPORT_DIR = Path.home() / ".local" / "share" / "rubricai" / "reports"
@@ -134,12 +135,12 @@ def report_generate(
     """
     requested = set(formats or ["markdown", "json"])
 
-    f = Finding.model_validate(finding)
+    f = validate_model(Finding, finding, "finding")
     # Strip AI-use fields not in IntelResult schema (e.g. derived_finding_context)
     intel_clean = {k: v for k, v in intel.items() if k != "derived_finding_context"}
-    i = IntelResult.model_validate(intel_clean)
-    a = Assessment.model_validate(assessment)
-    ev = [EvidenceItem.model_validate(e) for e in (evidence or [])]
+    i = validate_model(IntelResult, intel_clean, "intel")
+    a = validate_model(Assessment, assessment, "assessment")
+    ev = [validate_model(EvidenceItem, e, "evidence item") for e in (evidence or [])]
 
     ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
     base_name = f"{f.id}_{ts}"

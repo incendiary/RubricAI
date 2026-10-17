@@ -157,7 +157,7 @@ For each mitigation, ask:
 ```
 1. intel_lookup(cves=[<cve_id>], include=["kev","epss","cvss","poc","vendor"])
    → call EARLY (after CVE ID + component name) — before most interview questions
-   → use derived_finding_context to pre-populate attacker_utility, entry_point, preconditions
+   → use derived_finding_context to pre-populate attacker_utility, entry_point, preconditions (copy only those three keys; `cvss_av`, `confidence` and `description` are not finding fields)
    → present to engineer for confirmation
 
 2. score_evaluate(finding=<finding_dict>, intel=<intel_result>)
@@ -255,6 +255,15 @@ Construct the `finding` dict carefully. Pydantic rejects unknown fields — any 
 | `mitigations` | `list[Mitigation]` | Default empty list |
 | `evidence_pointers` | `list[EvidencePointer]` | Default empty list |
 | `automatable` | `bool \| null` | Optional BOD 26-04 override |
+
+### `component` sub-object fields
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | `str` | Required. Put device models here too (for example `"PA-3200"`); there is no `device` field |
+| `version` | `str \| null` | Optional |
+| `vendor` | `str \| null` | Optional (for example `"Palo Alto Networks"`) |
+| `type` | `str` | See allowed values below; default `"unknown"` |
 
 ### `component.type` allowed values
 

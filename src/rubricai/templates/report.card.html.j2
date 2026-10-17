@@ -185,7 +185,7 @@
 
   <!-- Component strip -->
   <div class="component-strip">
-    <strong>{{ finding.component.name }}</strong>
+    <strong>{{ finding.component.name }}</strong>{% if finding.component.vendor %} ({{ finding.component.vendor }}){% endif %}
     {{ finding.component.version or "" }}
     · {{ finding.component.type }}
     · {{ finding.entry_point.description }}

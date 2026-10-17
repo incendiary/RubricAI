@@ -5,6 +5,7 @@ from typing import Any
 from ..policy.registry import _POLICIES
 from ..schemas.finding import Finding
 from ..schemas.intel import IntelResult
+from ..validation import validate_model
 
 
 def score_compare(
@@ -24,9 +25,9 @@ def score_compare(
           - ``consensus``: ``"agree"`` if all policies agree on lane,
             else ``"diverge"``
     """
-    f = Finding.model_validate(finding)
+    f = validate_model(Finding, finding, "finding")
     intel_clean = {k: v for k, v in intel.items() if k != "derived_finding_context"}
-    i = IntelResult.model_validate(intel_clean)
+    i = validate_model(IntelResult, intel_clean, "intel")
 
     results: dict[str, Any] = {}
     summary: list[dict[str, Any]] = []

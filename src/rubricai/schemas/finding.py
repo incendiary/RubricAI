@@ -19,6 +19,7 @@ class Component(BaseModel):
 
     name: str
     version: str | None = None
+    vendor: str | None = None
     type: Literal[
         "library", "service", "os", "firmware", "application", "appliance", "unknown"
     ] = "unknown"
