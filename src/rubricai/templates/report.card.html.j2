@@ -219,7 +219,7 @@
 
         <!-- CVSS -->
         <span class="sname">CVSS</span>
-        <span class="sval">{% if intel.cvss %}{{ intel.cvss.base }} v{{ intel.cvss.version }}{% else %}<span class="no-data">—</span>{% endif %}</span>
+        <span class="sval">{% if intel.cvss %}{{ intel.cvss.base }} v{{ intel.cvss.version }}{% if intel.cvss.source %} ({{ intel.cvss.source|upper }}){% endif %}{% else %}<span class="no-data">—</span>{% endif %}</span>
         <span class="sappl">{% if intel.cvss %}<span class="applied-yes">✓</span>{% else %}<span class="applied-no">—</span>{% endif %}</span>
         <span class="spts">{% if assessment.priority_score_breakdown %}+{{ assessment.priority_score_breakdown.cvss }}{% else %}—{% endif %}</span>
 

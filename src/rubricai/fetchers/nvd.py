@@ -31,26 +31,39 @@ def _headers(with_auth: bool = True) -> dict:
 async def _fetch_with_auth_fallback(
     method: str, url: str, params: dict, headers: dict | None = None
 ) -> httpx.Response:
-    """Fetch with API key; fallback to unauthenticated if auth service returns 503.
+    """Fetch with API key; fall back to unauthenticated if the key cannot be used.
 
-    NVD's auth service occasionally fails while the public endpoint works.
-    This helper tries authenticated first, then retries without auth on 503.
+    NVD's auth service occasionally fails (503) while the public endpoint works, and
+    it answers a rejected key with a 404 carrying the header ``message: Invalid
+    apiKey.``, which is otherwise indistinguishable from "CVE not found". In both
+    cases retry without the key so one bad key cannot silence all NVD data.
     """
     headers = headers or {}
     resp = await fetch_with_timeout_escalation(
         method, url, params=params, headers=headers
     )
-    if headers and resp.status_code == 503:
-        # Auth service is down (503) — retry without auth
+    if headers and (resp.status_code == 503 or _key_rejected(resp)):
         _logger.warning(
-            "NVD auth service returned 503; retrying without API key. "
-            "To test your API key, request one at "
-            "https://nvd.nist.gov/developers/request-an-api-key"
+            "NVD %s; retrying without the API key. Check NVD_API_KEY in the MCP "
+            "client config (it overrides .env), or request a key at "
+            "https://nvd.nist.gov/developers/request-an-api-key",
+            (
+                "rejected the API key"
+                if resp.status_code != 503
+                else "auth service returned 503"
+            ),
         )
         resp = await fetch_with_timeout_escalation(
             method, url, params=params, headers={}
         )
     return resp
+
+
+def _key_rejected(resp: httpx.Response) -> bool:
+    return (
+        resp.status_code == 404
+        and "invalid apikey" in resp.headers.get("message", "").lower()
+    )
 
 
 def _process_cve(cve: dict) -> dict:
@@ -324,7 +337,9 @@ async def fetch_cvss(cve_id: str) -> dict | None:
     ]:
         entries = metrics.get(key, [])
         if entries:
-            data = entries[0].get("cvssData", {})
+            # NIST's "Primary" assessment first, then CNA "Secondary" entries
+            primary = next((e for e in entries if e.get("type") == "Primary"), None)
+            data = (primary or entries[0]).get("cvssData", {})
             return {
                 "base": data.get("baseScore"),
                 "vector": data.get("vectorString"),

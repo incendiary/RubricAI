@@ -53,7 +53,7 @@
 | EPSS score | No data |
 {% endif %}
 {% if intel.cvss %}
-| CVSS base | {{ intel.cvss.base }} (v{{ intel.cvss.version }}) |
+| CVSS base | {{ intel.cvss.base }} (v{{ intel.cvss.version }}{% if intel.cvss.source %}, {{ intel.cvss.source|upper }}{% endif %}) |
 {% else %}
 | CVSS base | No data |
 {% endif %}

@@ -27,6 +27,7 @@ class CvssInfo(BaseModel):
     base: float = Field(ge=0, le=10)
     vector: str | None = None
     version: Literal["2.0", "3.0", "3.1", "4.0", "unknown"] = "unknown"
+    source: Literal["nvd", "github"] | None = None
 
 
 class PocInfo(BaseModel):

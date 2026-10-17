@@ -900,3 +900,41 @@ async def test_gh_advisory_server_error_is_not_cached(gh):
         await gh.fetch("CVE-2024-0001")
         await gh.fetch("CVE-2024-0001")
     assert call.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_fetch_cvss_prefers_primary_over_secondary_entry():
+    record = {
+        "metrics": {
+            "cvssMetricV31": [
+                {
+                    "type": "Secondary",
+                    "cvssData": {"baseScore": 9.1, "vectorString": "CVSS:3.1/SEC"},
+                },
+                {
+                    "type": "Primary",
+                    "cvssData": {"baseScore": 10.0, "vectorString": "CVSS:3.1/PRI"},
+                },
+            ]
+        }
+    }
+    with patch.object(nvd_fetcher, "fetch", new=AsyncMock(return_value=record)):
+        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3400")
+    assert cvss == {"base": 10.0, "vector": "CVSS:3.1/PRI", "version": "3.1"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_cvss_falls_back_to_first_entry_without_primary():
+    record = {
+        "metrics": {
+            "cvssMetricV31": [
+                {
+                    "type": "Secondary",
+                    "cvssData": {"baseScore": 9.1, "vectorString": "CVSS:3.1/SEC"},
+                }
+            ]
+        }
+    }
+    with patch.object(nvd_fetcher, "fetch", new=AsyncMock(return_value=record)):
+        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3400")
+    assert cvss["base"] == 9.1
