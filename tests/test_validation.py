@@ -87,15 +87,15 @@ def test_other_models_use_their_own_label():
 
 def test_score_evaluate_surfaces_the_friendly_message():
     with pytest.raises(ValueError, match="Allowed here"):
-        score_evaluate({**_FINDING, "environment_name": "x"}, _INTEL)
+        score_evaluate({**_FINDING, "hostname": "x"}, _INTEL)
 
 
 def test_tool_error_carries_the_message_to_the_client():
-    with pytest.raises(ToolError, match="finding.environment_name: unknown field"):
+    with pytest.raises(ToolError, match="finding.hostname: unknown field"):
         asyncio.run(
             mcp.call_tool(
                 "score_evaluate",
-                {"finding": {**_FINDING, "environment_name": "x"}, "intel": _INTEL},
+                {"finding": {**_FINDING, "hostname": "x"}, "intel": _INTEL},
             )
         )
 

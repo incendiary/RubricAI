@@ -110,6 +110,8 @@ def score_evaluate(
 
     From intel_lookup's ``derived_finding_context`` copy only ``attacker_utility``,
     ``entry_point`` and ``preconditions``; its other keys are not finding fields.
+    Optionally set ``environment_name`` (as listed by env_list) to link the finding
+    and its report to a saved environment.
 
     Args:
         finding: Finding object (engineer-provided context).
@@ -141,6 +143,8 @@ def score_compare(
 
     From intel_lookup's ``derived_finding_context`` copy only ``attacker_utility``,
     ``entry_point`` and ``preconditions``; its other keys are not finding fields.
+    Optionally set ``environment_name`` (as listed by env_list) to link the finding
+    and its report to a saved environment.
 
     Args:
         finding: Finding object (engineer-provided context).

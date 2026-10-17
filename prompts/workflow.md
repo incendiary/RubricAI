@@ -36,7 +36,7 @@ env_read(environment_name=<answer>)
 
 ### Step 4 — Proceed
 
-The environment is now active for the session. All `env_write`, `bom_update`, and `bom_check` calls use this `environment_name`.
+The environment is now active for the session. All `env_write`, `bom_update`, and `bom_check` calls use this `environment_name`, and every `finding` you build sets `environment_name` to it.
 
 ---
 
@@ -246,6 +246,7 @@ Construct the `finding` dict carefully. Pydantic rejects unknown fields — any 
 | `cve_or_id` | `str` | CVE ID or advisory reference |
 | `title` | `str \| null` | Optional short description |
 | `component` | `Component` | See below |
+| `environment_name` | `str \| null` | The environment chosen at session start (as listed by `env_list`); set it on every finding so the report is linked to it |
 | `environment` | `Environment \| null` | See below — **only 2 fields** |
 | `entry_point` | `EntryPoint` | Required |
 | `reachability` | `str` | **Top-level field — NOT nested under `environment`** |

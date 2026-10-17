@@ -33,6 +33,9 @@
 | Type | {{ finding.component.type }} |
 | Entry point | {{ finding.entry_point.description }} |
 | Reachability | {{ finding.reachability }} |
+{% if finding.environment_name %}
+| Environment | {{ finding.environment_name }} |
+{% endif %}
 
 {% if finding.environment %}
 | Environment stage | {{ finding.environment.stage }} |
