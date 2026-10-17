@@ -224,6 +224,30 @@ async def test_nvd_503_with_api_key_retries_without_key(upstream, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_nvd_rejected_key_404_retries_without_key(upstream, monkeypatch):
+    monkeypatch.setenv("NVD_API_KEY", "test-key-not-real")
+
+    def handler(request):
+        if "apiKey" in request.headers:
+            return httpx.Response(404, headers={"message": "Invalid apiKey."})
+        return httpx.Response(
+            200, json={"vulnerabilities": [{"cve": {"id": CVE, "metrics": {}}}]}
+        )
+
+    upstream.handler = handler
+    assert await nvd.fetch(CVE) == {"id": CVE, "metrics": {}}
+    assert ["apiKey" in r.headers for r in upstream.requests] == [True, False]
+
+
+@pytest.mark.asyncio
+async def test_nvd_genuine_404_with_valid_key_is_not_retried(upstream, monkeypatch):
+    monkeypatch.setenv("NVD_API_KEY", "test-key-not-real")
+    upstream.handler = _status(404)  # no "Invalid apiKey" header: CVE really absent
+    assert await nvd.fetch(CVE) is None
+    assert len(upstream.requests) == 1
+
+
+@pytest.mark.asyncio
 async def test_nvd_with_api_key_sends_key_when_healthy(upstream, monkeypatch):
     monkeypatch.setenv("NVD_API_KEY", "test-key-not-real")
     upstream.handler = lambda r: httpx.Response(
