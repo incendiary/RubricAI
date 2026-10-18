@@ -366,3 +366,23 @@ async def test_intel_lookup_survives_failing_sources(upstream, sick_nvd):
     assert sick["cvss"] is None
     assert sick["description"] is None
     assert sick["poc"]["available"] is False
+
+
+@pytest.mark.asyncio
+async def test_gh_advisory_ignores_records_cached_before_the_current_shape(upstream):
+    """Entries cached by an older version (no patched_versions) are not served."""
+    stale = {"id": CVE, "description": "old shape", "cvss_base": None}
+    gh_advisory._cache.set("gh_advisory", CVE, stale)  # namespace used before OPEN-19
+    upstream.handler = lambda request: httpx.Response(
+        200,
+        json=[
+            {
+                "cve_id": CVE,
+                "summary": "fresh",
+                "vulnerabilities": [{"first_patched_version": "2.15.0"}],
+            }
+        ],
+    )
+    record = await gh_advisory.fetch(CVE)
+    assert record["patched_versions"] == ["2.15.0"]
+    assert len(upstream.requests) == 1

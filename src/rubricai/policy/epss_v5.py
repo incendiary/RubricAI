@@ -9,6 +9,7 @@ Policy differences from chml-v0.2:
 - Medium lane has an explicit 30-day SLA (vs. patch train in chml-v0.2).
 """
 
+from ..formatting import fmt_epss
 from ..schemas.assessment import Assessment, RemediationTarget, ScoreBreakdown
 from ..schemas.finding import Finding, Mitigation
 from ..schemas.intel import IntelResult
@@ -32,12 +33,6 @@ def _mitigation_effect(mitigations: list[Mitigation]) -> str:
         m.type in STRONG_MITIGATION_TYPES and m.causal_claim for m in mitigations
     )
     return "strong" if strong else "partial"
-
-
-def _fmt_epss(score: float) -> str:
-    """Three decimals, but never show 1.000 for a score that is below 1."""
-    text = f"{score:.3f}"
-    return f"{score:.5f}".rstrip("0") if text == "1.000" and score < 1 else text
 
 
 def evaluate(
@@ -91,7 +86,7 @@ def evaluate(
     ):
         lane = "critical"
         rationale.append(
-            f"EPSS score {_fmt_epss(epss_score)} meets the critical threshold "
+            f"EPSS score {fmt_epss(epss_score)} meets the critical threshold "
             f"({EPSS_V5_CRITICAL_THRESHOLD}) on an internet-exposed asset."
         )
 
@@ -101,7 +96,7 @@ def evaluate(
         lane = "high"
         if epss_score is not None and epss_score >= EPSS_V5_HIGH_THRESHOLD:
             rationale.append(
-                f"EPSS score {_fmt_epss(epss_score)} exceeds the High threshold "
+                f"EPSS score {fmt_epss(epss_score)} exceeds the High threshold "
                 f"({EPSS_V5_HIGH_THRESHOLD}) — elevated exploitation probability."
             )
         if kev_listed and internet_exposed:
@@ -112,7 +107,7 @@ def evaluate(
     elif epss_score is not None and epss_score >= EPSS_V5_MEDIUM_THRESHOLD:
         lane = "medium"
         rationale.append(
-            f"EPSS score {_fmt_epss(epss_score)} indicates moderate exploitation probability "
+            f"EPSS score {fmt_epss(epss_score)} indicates moderate exploitation probability "
             f"(Medium threshold: {EPSS_V5_MEDIUM_THRESHOLD})."
         )
 
@@ -123,7 +118,7 @@ def evaluate(
 
     else:
         lane = "low"
-        score_str = _fmt_epss(epss_score) if epss_score is not None else "unavailable"
+        score_str = fmt_epss(epss_score) if epss_score is not None else "unavailable"
         rationale.append(
             f"EPSS score {score_str} is below the Medium threshold "
             f"({EPSS_V5_MEDIUM_THRESHOLD}) with no KEV escalation."

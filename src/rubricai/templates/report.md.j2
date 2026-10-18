@@ -54,7 +54,7 @@
 | CISA KEV | No data |
 {% endif %}
 {% if intel.epss %}
-| EPSS score | {{ "%.3f"|format(intel.epss.score) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th percentile) |
+| EPSS score | {{ intel.epss.score|epss(3) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th percentile) |
 {% else %}
 | EPSS score | No data |
 {% endif %}
@@ -91,7 +91,7 @@ How each signal was tested and what effect it had on the lane decision and prior
 | CISA KEV | No data | KEV + internet + high utility → Critical | ❌ | No KEV data |
 {% endif %}
 {% if intel.epss %}
-| EPSS | {{ "%.4f"|format(intel.epss.score) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th pct) | ≥ 0.5 → High escalation (+1.0 pts); ≥ 0.1 → partial boost (+0.5 pts) | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}✅ high{% elif intel.epss.score >= 0.1 %}⚠️ mid{% else %}❌{% endif %} | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}High escalation signal (+1.0 pts){% elif intel.epss.score >= 0.1 %}Partial boost (+0.5 pts){% else %}Below threshold — no escalation{% endif %} |
+| EPSS | {{ intel.epss.score|epss(4) }} ({{ "%.0f"|format(intel.epss.percentile * 100) }}th pct) | ≥ 0.5 → High escalation (+1.0 pts); ≥ 0.1 → partial boost (+0.5 pts) | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}✅ high{% elif intel.epss.score >= 0.1 %}⚠️ mid{% else %}❌{% endif %} | {% if "epss_high" in assessment.score_breakdown.intel_escalation %}High escalation signal (+1.0 pts){% elif intel.epss.score >= 0.1 %}Partial boost (+0.5 pts){% else %}Below threshold — no escalation{% endif %} |
 {% else %}
 | EPSS | No data | ≥ 0.5 → High escalation | ❌ | No EPSS data |
 {% endif %}
@@ -100,7 +100,7 @@ How each signal was tested and what effect it had on the lane decision and prior
 | Mitigations | {{ assessment.score_breakdown.mitigation_effect | upper if assessment.score_breakdown else "none" }} | Strong + causal_claim → priority penalty and lane cap | {% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %}✅{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %}⚠️{% else %}❌{% endif %} | {% if assessment.priority_score_breakdown and assessment.priority_score_breakdown.mitigation_penalty != 0 %}{{ assessment.priority_score_breakdown.mitigation_penalty }} pts{% else %}No penalty{% endif %}{% if assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "strong" %} — exploit path blocked{% elif assessment.score_breakdown and assessment.score_breakdown.mitigation_effect == "partial" %} — partially mitigated{% else %} — no verified mitigation{% endif %} |
 
 {% if assessment.priority_score_breakdown %}
-**Priority score:** {{ assessment.priority_score_breakdown.cvss }} (CVSS) + {{ assessment.priority_score_breakdown.reachability }} (reach) + {{ assessment.priority_score_breakdown.intel }} (intel) + {{ assessment.priority_score_breakdown.utility }} (utility) {{ assessment.priority_score_breakdown.mitigation_penalty }} (mitigation) = **{{ assessment.priority_score_breakdown.total }} / 10**
+**Priority score:** {{ assessment.priority_score_breakdown.cvss }} (CVSS) + {{ assessment.priority_score_breakdown.reachability }} (reach) + {{ assessment.priority_score_breakdown.intel }} (intel) + {{ assessment.priority_score_breakdown.utility }} (utility) {{ "-" if assessment.priority_score_breakdown.mitigation_penalty < 0 else "+" }} {{ assessment.priority_score_breakdown.mitigation_penalty|abs }} (mitigation) = **{{ assessment.priority_score_breakdown.total }} / 10**
 {% endif %}
 
 ---
