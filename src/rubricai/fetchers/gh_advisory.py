@@ -28,7 +28,9 @@ from .retry import fetch_with_timeout_escalation
 _logger = logging.getLogger(__name__)
 
 _API_URL = "https://api.github.com/advisories"
-_NS = "gh_advisory"
+# Bump the suffix whenever the normalised record gains or changes keys, so entries
+# cached by an older version are not served (OPEN-19 added patched_versions).
+_NS = "gh_advisory_v2"
 _TTL_HOURS = 24
 _NEGATIVE_TTL_HOURS = 1
 _NO_ADVISORY = "none"  # cached marker for a confirmed "no advisory" answer

@@ -10,6 +10,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from ..formatting import fmt_epss
 from ..schemas.assessment import Assessment
 from ..schemas.evidence import EvidenceItem
 from ..schemas.finding import Finding
@@ -27,12 +28,14 @@ def _report_dir() -> Path:
 
 
 def _jinja_env() -> Environment:
-    return Environment(
+    env = Environment(
         loader=FileSystemLoader(str(_TEMPLATE_DIR)),
         autoescape=select_autoescape(["html", "htm"]),
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    env.filters["epss"] = fmt_epss
+    return env
 
 
 def _render_markdown(
