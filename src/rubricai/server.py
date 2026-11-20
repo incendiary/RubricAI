@@ -18,8 +18,8 @@ from .tools.intel import lookup as _intel_lookup
 from .tools.policy import policy_get as _policy_get
 from .tools.project_scan import project_scan as _project_scan
 from .tools.report import report_generate as _report_generate
+from .tools.scoring import score_compare as _score_compare
 from .tools.scoring import score_evaluate as _score_evaluate
-from .tools.scoring_compare import score_compare as _score_compare
 
 # Load .env before reading any env vars. No-ops if file absent.
 # Does not override vars already set in the process environment.
