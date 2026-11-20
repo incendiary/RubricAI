@@ -73,24 +73,12 @@ def _process_cve(cve: dict) -> dict:
         (d["value"] for d in cve.get("descriptions", []) if d.get("lang") == "en"),
         "",
     )
-    cvss_base = None
-    cvss_version = None
-    metrics = cve.get("metrics", {})
-    for key, ver in [
-        ("cvssMetricV31", "3.1"),
-        ("cvssMetricV30", "3.0"),
-        ("cvssMetricV2", "2.0"),
-    ]:
-        entries = metrics.get(key, [])
-        if entries:
-            cvss_base = entries[0].get("cvssData", {}).get("baseScore")
-            cvss_version = ver
-            break
+    cvss = extract_cvss(cve) or {}
     return {
         "id": cve_id,
         "description": description[:300],
-        "cvss_base": cvss_base,
-        "cvss_version": cvss_version,
+        "cvss_base": cvss.get("base"),
+        "cvss_version": cvss.get("version"),
         "published": cve.get("published", ""),
         "last_modified": cve.get("lastModified", ""),
         "url": f"https://nvd.nist.gov/vuln/detail/{cve_id}",
@@ -322,12 +310,8 @@ async def search(
     return results
 
 
-async def fetch_cvss(cve_id: str) -> dict | None:
+def extract_cvss(record: dict) -> dict | None:
     """Extract CVSS info from an NVD record."""
-    record = await fetch(cve_id)
-    if not record:
-        return None
-
     metrics = record.get("metrics", {})
     # Prefer CVSSv3.1 → 3.0 → 2.0 in that order
     for key, version in [

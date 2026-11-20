@@ -70,7 +70,7 @@ class TestIntelLookupValidation:
     async def test_accepts_valid_cve_format(self):
         """Valid format passes validation (will fail on fetch but not validation)."""
         # Patch fetchers so we don't hit the network
-        from unittest.mock import AsyncMock, patch
+        from unittest.mock import AsyncMock, MagicMock, patch
 
         with (
             patch(
@@ -86,8 +86,8 @@ class TestIntelLookupValidation:
                 new=AsyncMock(return_value=None),
             ),
             patch(
-                "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-                new=AsyncMock(return_value=None),
+                "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+                new=MagicMock(return_value=None),
             ),
             patch(
                 "rubricai.tools.intel.poc_fetcher.fetch",
