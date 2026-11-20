@@ -517,7 +517,6 @@ pytest
 # Run linters
 black .
 ruff check .
-isort .
 
 # Run all pre-commit hooks
 pre-commit run --all-files
