@@ -59,7 +59,7 @@
 | EPSS score | No data |
 {% endif %}
 {% if intel.cvss %}
-| CVSS base | {{ intel.cvss.base }} (v{{ intel.cvss.version }}{% if intel.cvss.source %}, {{ intel.cvss.source|upper }}{% endif %}) |
+{% set cvss_meta = [("v" ~ intel.cvss.version) if intel.cvss.version != "unknown", intel.cvss.source|upper if intel.cvss.source]|select|join(", ") %}| CVSS base | {{ intel.cvss.base }}{% if cvss_meta %} ({{ cvss_meta }}){% endif %} |
 {% else %}
 | CVSS base | No data |
 {% endif %}
@@ -81,7 +81,7 @@ How each signal was tested and what effect it had on the lane decision and prior
 | Signal | Value | Threshold | Applied | Effect |
 |--------|-------|-----------|---------|--------|
 {% if intel.cvss %}
-| CVSS base | {{ intel.cvss.base }} (v{{ intel.cvss.version }}) | Input to priority score (×0.4) | ✅ | +{{ "%.2f"|format(assessment.priority_score_breakdown.cvss if assessment.priority_score_breakdown else 0) }} pts |
+| CVSS base | {{ intel.cvss.base }}{% if intel.cvss.version != "unknown" %} (v{{ intel.cvss.version }}){% endif %} | Input to priority score (×0.4) | ✅ | +{{ "%.2f"|format(assessment.priority_score_breakdown.cvss if assessment.priority_score_breakdown else 0) }} pts |
 {% else %}
 | CVSS base | No data | Input to priority score (×0.4) | ❌ | No CVSS contribution |
 {% endif %}

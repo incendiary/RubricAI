@@ -102,6 +102,25 @@ class TestReportGenerate:
         assert saved["finding"]["id"] == "FIND-TEST-001"
         assert saved["assessment"]["lane"] == "critical"
 
+    def test_unknown_cvss_version_not_rendered_as_vunknown(self):
+        """A CVSS score without a known version must not render as 'vunknown'."""
+        from rubricai.schemas.assessment import Assessment
+        from rubricai.schemas.finding import Finding
+        from rubricai.schemas.intel import IntelResult
+        from rubricai.tools.report import _render_html_card, _render_markdown
+
+        f = Finding.model_validate(_finding_dict())
+        a = Assessment.model_validate(_assessment_dict())
+        for version, expected in (("unknown", "10.0"), ("3.1", "10.0 v3.1")):
+            i = IntelResult.model_validate(
+                _intel_dict(cvss={"base": 10.0, "version": version})
+            )
+            md = _render_markdown(f, i, a, [])
+            html = _render_html_card(f, i, a, [])
+            assert "vunknown" not in md
+            assert "vunknown" not in html
+            assert expected in html
+
     def test_markdown_only_format(self, tmp_path, monkeypatch):
         monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(tmp_path))
         result = report_generate(
