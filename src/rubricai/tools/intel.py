@@ -80,7 +80,7 @@ async def _lookup_one(cve_id: str, sources: set[str]) -> IntelResult:
     # used only when NVD has none, and only if it carries both score and vector.
     cvss = None
     if "cvss" in sources:
-        nvd_cvss = await nvd_fetcher.fetch_cvss(cve_id) if nvd_record else None
+        nvd_cvss = nvd_fetcher.extract_cvss(nvd_record) if nvd_record else None
         if nvd_cvss and nvd_cvss.get("base") is None:
             nvd_cvss = None  # unscored NVD entry: fall back to GitHub
         gh_cvss = None
