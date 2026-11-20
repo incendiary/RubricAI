@@ -31,7 +31,7 @@ pip install -e . --no-deps
 ```
 
 - `pytest`: runs the suite; coverage gate is set in `pyproject.toml`.
-- `black --check . && ruff check . && isort --check-only .`: the CI Lint job. Fix locally with `black .` and `isort .`.
+- `black --check . && ruff check .`: the CI Lint job. Fix locally with `black .` and `ruff check --fix .` (ruff's `I` rules sort imports).
 - `pre-commit run --all-files`: the local hook set.
 - `detect-secrets scan --baseline .secrets.baseline`: the CI secret baseline check.
 - `docker compose up --build`: SSE deployment; set `RUBRICAI_API_KEY` first.
@@ -74,7 +74,7 @@ Lint settings live in `pyproject.toml` (line length 88, Python 3.11 target).
 - The network transports (`sse`, `http`) refuse to start without `RUBRICAI_API_KEY` unless `RUBRICAI_ALLOW_NO_AUTH=1` is set. `RUBRICAI_TLS_CERT` and `RUBRICAI_TLS_KEY` must be set together. Keep both behaviours.
 - Add new dependencies to `requirements-lock.txt` with exact pins. CI's Audit job runs `pip-audit` against that file.
 - Third-party GitHub Actions stay pinned to full commit SHAs, with the tag in a trailing comment.
-- `black`, `ruff`, `isort` and TruffleHog are pinned in more than one place (lock file, `ci.yml`, `.pre-commit-config.yaml`). Dependabot ignores them; bump all copies together in one PR.
+- `black`, `ruff` and TruffleHog are pinned in more than one place (lock file, `ci.yml`, `.pre-commit-config.yaml`). Dependabot ignores them; bump all copies together in one PR.
 
 ## Documentation
 

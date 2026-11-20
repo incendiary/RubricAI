@@ -11,7 +11,6 @@ _POLICIES: dict[str, Callable] = {
     "bod-26-04": bod_26_04.evaluate,
 }
 
-DEFAULT_POLICY: str = POLICY_VERSION  # "chml-v0.2"
 AVAILABLE_POLICIES: list[str] = list(_POLICIES)
 
 
@@ -20,7 +19,7 @@ def get_evaluator(policy_version: str | None) -> Callable:
 
     Raises ValueError with a helpful message if the version is unknown.
     """
-    key = policy_version or DEFAULT_POLICY
+    key = policy_version or POLICY_VERSION
     if key not in _POLICIES:
         available = ", ".join(sorted(_POLICIES))
         raise ValueError(f"Unknown policy: {key!r}. Available: {available}")

@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from ..policy.registry import AVAILABLE_POLICIES, DEFAULT_POLICY, get_evaluator
+from ..policy.definitions import POLICY_VERSION
+from ..policy.registry import AVAILABLE_POLICIES, get_evaluator
 from ..schemas.finding import Finding
 from ..schemas.intel import IntelResult
 from ..validation import validate_model
@@ -32,7 +33,7 @@ def score_evaluate(
     """
     f = validate_model(Finding, finding, "finding")
     i = validate_intel(intel)
-    version = policy_version or DEFAULT_POLICY
+    version = policy_version or POLICY_VERSION
 
     evaluator = get_evaluator(version)
     assessment = evaluator(f, i, policy_version=version)

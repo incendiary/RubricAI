@@ -72,7 +72,6 @@ _FETCHERS = [
     ("epss", lambda: epss.fetch(CVE), None),
     ("gh_advisory", lambda: gh_advisory.fetch(CVE), None),
     ("nvd_fetch", lambda: nvd.fetch(CVE), None),
-    ("nvd_fetch_cvss", lambda: nvd.fetch_cvss(CVE), None),
     ("nvd_search", lambda: nvd.search("log4j-core"), []),
     ("osv", lambda: osv.search("log4j-core", "maven"), []),
     ("poc", lambda: poc.fetch(CVE), _NO_POC),
