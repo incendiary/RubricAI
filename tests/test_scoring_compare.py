@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from rubricai.policy.registry import AVAILABLE_POLICIES
-from rubricai.tools.scoring_compare import score_compare
+from rubricai.tools.scoring import score_compare
 
 
 def _base_finding(mitigations: list | None = None) -> dict:
