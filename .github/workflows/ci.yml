@@ -57,7 +57,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 \
-            libcairo2 libcairo2-dev libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+            libcairo2 libcairo2-dev libffi-dev shared-mime-info
 
       - name: Install dependencies
         run: |
@@ -91,7 +91,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 \
-            libcairo2 libcairo2-dev libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+            libcairo2 libcairo2-dev libffi-dev shared-mime-info
 
       - name: Install dependencies
         run: |
