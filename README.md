@@ -324,8 +324,8 @@ Full conversation transcripts with topical June 2026 CVEs are in [docs/examples.
 
 | # | Scenario | Policy | CVE | Report |
 |---|---|---|---|---|
-| 1 | [Quick start — triage a single CVE](docs/examples.md#1-quick-start--triage-a-single-cve) | CHML v0.2 | Check Point VPN RCE | [📄 PDF](examples/FIND-000012_20260621T145937Z.pdf) |
-| 2 | [Policy comparison — same CVE, three policies](docs/examples.md#2-policy-comparison--same-cve-three-policies) | All three | Check Point VPN RCE | — |
+| 1 | [Quick start — triage a single CVE](docs/examples.md#1-quick-start--triage-a-single-cve) | CHML v0.2 | PAN-OS GlobalProtect RCE | [📄 PDF](examples/FIND-000012_20260621T145937Z.pdf) |
+| 2 | [Policy comparison — same CVE, three policies](docs/examples.md#2-policy-comparison--same-cve-three-policies) | All three | PAN-OS GlobalProtect RCE | — |
 | 3 | [BOM daily check — SaaS microservices stack](docs/examples.md#3-bom-daily-check--saas-microservices-stack) | CHML v0.2 | FastAPI request smuggling | — |
 | 4 | [IaC assessment — PyCharm + Terraform](docs/examples.md#4-iac-environment-assessment--pycharm--terraform) | CHML v0.2 | EKS IMDSv2 gap | — |
 | 5 | [KEV alone ≠ Critical — Linux kernel privesc](docs/examples.md#5-nuanced-case--kev-alone--critical) | All three | Linux kernel io_uring privesc | [📄 PDF](examples/FIND-build-infra-CVE-2024-1086_20260621T151612Z.pdf) |
