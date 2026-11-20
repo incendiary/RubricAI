@@ -2,7 +2,8 @@
 
 from typing import Any
 
-from ..policy.registry import DEFAULT_POLICY, get_evaluator
+from ..policy.definitions import POLICY_VERSION
+from ..policy.registry import get_evaluator
 from ..schemas.finding import Finding
 from ..schemas.intel import IntelResult
 from ..validation import validate_model
@@ -28,7 +29,7 @@ def score_evaluate(
     # Strip AI-use fields added by intel_lookup that are not in IntelResult schema
     intel_clean = {k: v for k, v in intel.items() if k != "derived_finding_context"}
     i = validate_model(IntelResult, intel_clean, "intel")
-    version = policy_version or DEFAULT_POLICY
+    version = policy_version or POLICY_VERSION
 
     evaluator = get_evaluator(version)
     assessment = evaluator(f, i, policy_version=version)
