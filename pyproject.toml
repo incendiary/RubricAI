@@ -25,7 +25,6 @@ rubricai = "main:main"
 dev = [
   "black>=25.1,<27.0",
   "ruff~=0.15",
-  "isort~=8.0",
   "pre-commit~=4.6",
   "pytest~=9.0",
   "pytest-cov~=7.1",
@@ -56,10 +55,6 @@ ignore = ["S101"]  # allow assert in tests
 "scripts/render_prompt.py" = ["E501"]
 "tests/test_bod_26_04.py" = ["E501"]
 "src/rubricai/tools/project_scan.py" = ["E501"]
-
-[tool.isort]
-profile = "black"
-line_length = 88
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
