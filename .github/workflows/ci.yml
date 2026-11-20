@@ -140,3 +140,25 @@ jobs:
         uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c # v3.97.4
         with:
           extra_args: --results=verified,unknown
+
+  report-scheduled-failure:
+    name: Report scheduled failure
+    runs-on: ubuntu-latest
+    needs: [lint, test, test-py313, audit, secret-scan]
+    if: failure() && github.event_name == 'schedule'
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TITLE: Scheduled CI is failing on main
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the tracking issue
+        run: |
+          n=$(gh issue list --state open --search "\"$TITLE\" in:title" --json number -q '.[0].number')
+          if [ -n "$n" ]; then
+            gh issue comment "$n" --body "Still failing: $RUN_URL"
+          else
+            gh issue create --title "$TITLE" --body "The weekly scheduled run failed: $RUN_URL"
+          fi
