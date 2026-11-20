@@ -2,7 +2,7 @@
 
 import json
 import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -85,8 +85,8 @@ def mock_fetchers():
             new=AsyncMock(return_value=_MOCK_NVD_RECORD),
         ),
         patch(
-            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(
+            "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+            new=MagicMock(
                 return_value={"base": 9.8, "vector": "CVSS:3.1/...", "version": "3.1"}
             ),
         ),
@@ -148,8 +148,8 @@ async def test_lookup_kev_not_listed():
             new=AsyncMock(return_value=None),
         ),
         patch(
-            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(return_value=None),
+            "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+            new=MagicMock(return_value=None),
         ),
         patch(
             "rubricai.tools.intel.poc_fetcher.fetch",
@@ -201,8 +201,8 @@ async def _lookup_with_gh(
             new=AsyncMock(return_value=nvd_record),
         ),
         patch(
-            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(return_value=nvd_cvss if nvd_record else None),
+            "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+            new=MagicMock(return_value=nvd_cvss if nvd_record else None),
         ),
         patch(
             "rubricai.tools.intel.poc_fetcher.fetch",
