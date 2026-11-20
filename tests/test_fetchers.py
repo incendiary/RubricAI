@@ -261,54 +261,24 @@ async def test_nvd_fetch_empty_vulnerabilities_returns_none(tmp_path):
     assert result is None
 
 
-async def test_nvd_cvss_v31_preferred_over_v30(tmp_path):
+def test_nvd_cvss_v31_preferred_over_v30():
     """When both v3.1 and v3.0 metrics are present, v3.1 is returned."""
-    cache = FileCache(tmp_path)
-    client = _mock_client(_mock_response(_NVD_BOTH_V31_AND_V30))
-    with (
-        patch.object(nvd_fetcher, "_cache", cache),
-        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
-    ):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-2222")
+    cvss = nvd_fetcher.extract_cvss(_NVD_BOTH_V31_AND_V30["vulnerabilities"][0]["cve"])
     assert cvss["version"] == "3.1"
     assert cvss["base"] == 9.8
 
 
-async def test_nvd_cvss_falls_back_to_v30(tmp_path):
+def test_nvd_cvss_falls_back_to_v30():
     """When only v3.0 is present, v3.0 is returned."""
-    cache = FileCache(tmp_path)
-    client = _mock_client(_mock_response(_NVD_V30_ONLY))
-    with (
-        patch.object(nvd_fetcher, "_cache", cache),
-        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
-    ):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3333")
+    cvss = nvd_fetcher.extract_cvss(_NVD_V30_ONLY["vulnerabilities"][0]["cve"])
     assert cvss["version"] == "3.0"
     assert cvss["base"] == 7.5
 
 
-async def test_nvd_fetch_cvss_returns_none_when_fetch_returns_none(tmp_path):
-    """fetch_cvss returns None when the underlying fetch() finds no record."""
-    cache = FileCache(tmp_path)
-    client = _mock_client(_mock_response({"vulnerabilities": []}))
-    with (
-        patch.object(nvd_fetcher, "_cache", cache),
-        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
-    ):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-9999-0000")
-    assert cvss is None
-
-
-async def test_nvd_cvss_returns_none_when_no_metrics(tmp_path):
-    """A record with no CVSS metrics returns None from fetch_cvss."""
+def test_nvd_cvss_returns_none_when_no_metrics():
+    """A record with no CVSS metrics returns None from extract_cvss."""
     no_metrics = _nvd_catalog({})
-    cache = FileCache(tmp_path)
-    client = _mock_client(_mock_response(no_metrics))
-    with (
-        patch.object(nvd_fetcher, "_cache", cache),
-        patch("rubricai.fetchers.nvd.httpx.AsyncClient", return_value=client),
-    ):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-4444")
+    cvss = nvd_fetcher.extract_cvss(no_metrics["vulnerabilities"][0]["cve"])
     assert cvss is None
 
 
@@ -766,8 +736,8 @@ def _patch_fetchers(kev, epss, nvd_record, cvss, poc):
             new=AsyncMock(return_value=nvd_record),
         ),
         patch(
-            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(return_value=cvss),
+            "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+            new=MagicMock(return_value=cvss),
         ),
         patch(
             "rubricai.tools.intel.poc_fetcher.fetch",
@@ -909,8 +879,7 @@ async def test_gh_advisory_server_error_is_not_cached(gh):
     assert call.await_count == 2
 
 
-@pytest.mark.asyncio
-async def test_fetch_cvss_prefers_primary_over_secondary_entry():
+def test_extract_cvss_prefers_primary_over_secondary_entry():
     record = {
         "metrics": {
             "cvssMetricV31": [
@@ -925,13 +894,11 @@ async def test_fetch_cvss_prefers_primary_over_secondary_entry():
             ]
         }
     }
-    with patch.object(nvd_fetcher, "fetch", new=AsyncMock(return_value=record)):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3400")
+    cvss = nvd_fetcher.extract_cvss(record)
     assert cvss == {"base": 10.0, "vector": "CVSS:3.1/PRI", "version": "3.1"}
 
 
-@pytest.mark.asyncio
-async def test_fetch_cvss_falls_back_to_first_entry_without_primary():
+def test_extract_cvss_falls_back_to_first_entry_without_primary():
     record = {
         "metrics": {
             "cvssMetricV31": [
@@ -942,8 +909,7 @@ async def test_fetch_cvss_falls_back_to_first_entry_without_primary():
             ]
         }
     }
-    with patch.object(nvd_fetcher, "fetch", new=AsyncMock(return_value=record)):
-        cvss = await nvd_fetcher.fetch_cvss("CVE-2024-3400")
+    cvss = nvd_fetcher.extract_cvss(record)
     assert cvss["base"] == 9.1
 
 
@@ -976,3 +942,18 @@ def test_poc_references_are_deduplicated_before_the_cap():
         "https://example.test/poc-b",
         "https://example.test/poc-c",
     ]
+
+
+def test_nvd_search_result_uses_primary_cvss_like_lookup():
+    """Search results and intel lookups share one CVSS pick (Primary first)."""
+    cve = {
+        "id": "CVE-2024-3400",
+        "metrics": {
+            "cvssMetricV31": [
+                {"type": "Secondary", "cvssData": {"baseScore": 9.1}},
+                {"type": "Primary", "cvssData": {"baseScore": 10.0}},
+            ]
+        },
+    }
+    result = nvd_fetcher._process_cve(cve)
+    assert (result["cvss_base"], result["cvss_version"]) == (10.0, "3.1")

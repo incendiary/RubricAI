@@ -5,7 +5,7 @@ score_evaluate → report_generate
 All network calls are mocked at the fetcher layer.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -71,8 +71,8 @@ def mock_network():
             new=AsyncMock(return_value=_MOCK_NVD_RECORD),
         ),
         patch(
-            "rubricai.tools.intel.nvd_fetcher.fetch_cvss",
-            new=AsyncMock(
+            "rubricai.tools.intel.nvd_fetcher.extract_cvss",
+            new=MagicMock(
                 return_value={
                     "base": 9.8,
                     "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",

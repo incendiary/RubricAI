@@ -36,14 +36,11 @@ def _timeout_windows() -> tuple[int, ...]:
 async def fetch_with_timeout_escalation(
     method: str,
     url: str,
-    *,
-    timeout_windows: tuple[int, ...] | None = None,
-    max_retries: int = _MAX_RETRIES,
     **kwargs,
 ) -> httpx.Response:
     """Execute an HTTP request with exponential backoff and timeout escalation.
 
-    Tries the request with increasing timeout windows (default: 5s → 10s → 30s,
+    Tries the request with increasing timeout windows (5s → 10s → 30s,
     the last capped by RUBRICAI_HTTP_TIMEOUT).
     If a timeout occurs, escalates to the next window and retries.
     Within each window, 429/5xx/network errors use exponential backoff;
@@ -57,8 +54,6 @@ async def fetch_with_timeout_escalation(
     Args:
         method: HTTP method ("GET" or "POST").
         url: Request URL.
-        timeout_windows: Tuple of timeout values to try in sequence (seconds).
-        max_retries: Maximum exponential-backoff retries per timeout window.
         **kwargs: Passed through to client.request() (headers, params, etc.).
 
     Returns:
@@ -67,7 +62,8 @@ async def fetch_with_timeout_escalation(
     Raises:
         httpx.HTTPError: After all timeout windows and retries exhausted.
     """
-    timeout_windows = timeout_windows or _timeout_windows()
+    timeout_windows = _timeout_windows()
+    max_retries = _MAX_RETRIES
 
     for timeout_attempt, timeout_sec in enumerate(timeout_windows):
         try:
