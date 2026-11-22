@@ -20,6 +20,7 @@ Remediation bands (Table 1 approximation):
 Finding.automatable overrides the intel-derived value when provided by the engineer.
 """
 
+from ..intel_derive import _parse_cvss_vector
 from ..schemas.assessment import Assessment, RemediationTarget, ScoreBreakdown
 from ..schemas.finding import Finding, Mitigation
 from ..schemas.intel import IntelResult
@@ -54,10 +55,10 @@ def _resolve_technical_impact(intel: IntelResult) -> bool:
     if intel.cvss and intel.cvss.vector:
         # Re-derive from vector string stored on the CvssInfo object
         vector = intel.cvss.vector
-        scope_changed = "S:C" in vector
-        conf_high = "C:H" in vector
-        integ_high = "I:H" in vector
-        return scope_changed or (conf_high and integ_high)
+        # Whole-metric match: "C:H" must not match inside "AC:H".
+        # CVSS v4 (VC/VI/SC...) is not handled: it falls through to partial.
+        m = _parse_cvss_vector(vector)
+        return m.get("S") == "C" or (m.get("C") == "H" and m.get("I") == "H")
     return False  # conservative default: partial impact
 
 
