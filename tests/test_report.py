@@ -320,3 +320,29 @@ class TestReportGenerate:
     def test_guardrails_present(self):
         p = policy_get()
         assert len(p["guardrails"]) > 0
+
+
+@pytest.mark.parametrize(
+    "bad_id", ["../escaped", "a/b", "a\\b", ".hidden", "..", "", "x" * 129]
+)
+def test_report_generate_rejects_path_traversal_id(tmp_path, monkeypatch, bad_id):
+    report_dir = tmp_path / "reports"
+    monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(report_dir))
+    with pytest.raises(ValueError, match="Invalid finding id"):
+        report_generate(
+            _finding_dict(id=bad_id),
+            _intel_dict(),
+            _assessment_dict(),
+            formats=["markdown", "json"],
+        )
+    assert list(tmp_path.rglob("*.json")) == []
+    assert list(tmp_path.rglob("*.md")) == []
+
+
+@pytest.mark.parametrize(
+    "good_id", ["FIND-000012", "FIND-build-infra-CVE-2024-1086", "FIND-E2E-001"]
+)
+def test_finding_id_accepts_safe_identifiers(good_id):
+    from rubricai.schemas.finding import Finding
+
+    assert Finding.model_validate(_finding_dict(id=good_id)).id == good_id
