@@ -137,7 +137,7 @@ class Finding(BaseModel):
         # The id becomes a report filename, so it must not carry path syntax.
         if not _FINDING_ID_RE.fullmatch(value):
             raise ValueError(
-                f"Invalid finding id '{value}'. Use letters, numbers, dots, "
+                "Invalid finding id. Use letters, numbers, dots, "
                 "underscores, and hyphens only (1-128 characters, starting "
                 "with a letter or number)."
             )

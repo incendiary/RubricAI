@@ -328,13 +328,15 @@ class TestReportGenerate:
 def test_report_generate_rejects_path_traversal_id(tmp_path, monkeypatch, bad_id):
     report_dir = tmp_path / "reports"
     monkeypatch.setenv("RUBRICAI_REPORT_DIR", str(report_dir))
-    with pytest.raises(ValueError, match="Invalid finding id"):
+    with pytest.raises(ValueError, match="Invalid finding id") as exc:
         report_generate(
             _finding_dict(id=bad_id),
             _intel_dict(),
             _assessment_dict(),
             formats=["markdown", "json"],
         )
+    if bad_id:
+        assert bad_id not in str(exc.value)
     assert list(tmp_path.rglob("*.json")) == []
     assert list(tmp_path.rglob("*.md")) == []
 
