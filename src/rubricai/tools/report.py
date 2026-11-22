@@ -147,6 +147,9 @@ def report_generate(
     ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
     base_name = f"{f.id}_{ts}"
     report_dir = _report_dir()
+    # Defence in depth: the id validator should already prevent escapes.
+    if (report_dir / base_name).resolve().parent != report_dir.resolve():
+        raise ValueError("Report path escapes the report directory.")
 
     has_verified = any(e.verified for e in ev)
     result: dict[str, Any] = {"has_verified_evidence": has_verified}

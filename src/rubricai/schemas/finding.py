@@ -1,3 +1,4 @@
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -93,6 +94,9 @@ class EvidencePointer(BaseModel):
     notes: str | None = None
 
 
+_FINDING_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
+
+
 class Finding(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -126,3 +130,15 @@ class Finding(BaseModel):
         from ..tools.environment import _validate_env_name
 
         return _validate_env_name(value)
+
+    @field_validator("id")
+    @classmethod
+    def _validate_id(cls, value: str) -> str:
+        # The id becomes a report filename, so it must not carry path syntax.
+        if not _FINDING_ID_RE.fullmatch(value):
+            raise ValueError(
+                "Invalid finding id. Use letters, numbers, dots, "
+                "underscores, and hyphens only (1-128 characters, starting "
+                "with a letter or number)."
+            )
+        return value
