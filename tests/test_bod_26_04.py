@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 import pytest
 
 from rubricai.fetchers.nvd import extract_automatable, extract_technical_impact
-from rubricai.policy.bod_26_04 import evaluate
+from rubricai.policy.bod_26_04 import _resolve_technical_impact, evaluate
 from rubricai.policy.registry import AVAILABLE_POLICIES, get_evaluator
 from rubricai.schemas.finding import Finding
 from rubricai.schemas.intel import CvssInfo, IntelResult, KevInfo
@@ -295,6 +295,26 @@ class TestVulnrichmentExtraction:
 
     def test_extract_technical_impact_no_metrics(self):
         assert extract_technical_impact({}) is None
+
+    def test_extract_technical_impact_ac_high_not_confidentiality(self):
+        # AC:H contains the substring "C:H"; only I:H is a real High metric.
+        record = {
+            "metrics": {
+                "cvssMetricV31": [
+                    {
+                        "cvssData": {
+                            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+                        }
+                    }
+                ]
+            }
+        }
+        assert extract_technical_impact(record) == "partial"
+
+    def test_bod_total_impact_ignores_ac_high_substring(self):
+        vector = "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:H/A:N"
+        assert _resolve_technical_impact(_make_intel(cvss_vector=vector)) is False
+        assert _resolve_technical_impact(_make_intel(cvss_vector=_TOTAL_VECTOR))
 
 
 class TestPolicyGet:

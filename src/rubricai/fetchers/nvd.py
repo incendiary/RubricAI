@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 
 from ..cache import FileCache
+from ..intel_derive import _parse_cvss_vector
 from .retry import fetch_with_timeout_escalation
 
 _logger = logging.getLogger(__name__)
@@ -377,10 +378,8 @@ def extract_technical_impact(nvd_record: dict) -> str | None:
             vector = entries[0].get("cvssData", {}).get("vectorString", "")
             if not vector:
                 return "partial"
-            scope_changed = "S:C" in vector
-            conf_high = "C:H" in vector
-            integ_high = "I:H" in vector
-            if scope_changed or (conf_high and integ_high):
+            m = _parse_cvss_vector(vector)  # whole-metric match, not substring
+            if m.get("S") == "C" or (m.get("C") == "H" and m.get("I") == "H"):
                 return "total"
             return "partial"
     return None
